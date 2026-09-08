@@ -46,6 +46,11 @@ Os dois arquivos representam as mesmas 1.000 respostas e possuem:
 
 ## Uso esperado
 
+O [guia de leitura e tratamento](../Docs/mock-data.md#bibliotecas-recomendadas)
+recomenda SheetJS para Excel e `csv-parse` para CSV, com instruções de instalação,
+estrutura das bibliotecas e exemplos em TypeScript. O guia também explica como
+tratar números, ausências, datas, categorias e metadados no backend.
+
 O frontend pode usar os arquivos para desenvolver o fluxo de seleção, upload,
 progresso e mensagens de validação. O backend deve usá-los para implementar a
 leitura, a normalização e os cálculos estatísticos.
@@ -61,4 +66,3 @@ classes de Sturges. Essas regras pertencem à implementação e aos testes do ba
 - `Sim` e `Não` são categorias textuais, não valores booleanos.
 - A resposta personalizada `Perplexity` deve ser preservada.
 - O formato `.xls` previsto no plano ainda não possui um mock dedicado.
-

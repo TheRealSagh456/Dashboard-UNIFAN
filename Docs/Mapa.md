@@ -23,7 +23,8 @@ atualizados sempre que uma decisão relevante for tomada.
 
 ## Convenções
 
-- A estrutura atual do repositório utiliza as pastas `Frontend`, `Backend` e `Docs`.
+- A estrutura atual do repositório utiliza as pastas `Frontend`, `Backend`, `Docs`
+  e `Mocks`.
 - O npm é o gerenciador de pacotes oficial do frontend e do backend.
 - Decisões ainda não confirmadas devem ser registradas como pendentes, sem serem
   tratadas como requisitos definitivos.
