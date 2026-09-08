@@ -8,6 +8,7 @@ atualizados sempre que uma decisão relevante for tomada.
 
 | Documento | Finalidade | Situação |
 | :--- | :--- | :--- |
+| [AGENTS.md](../AGENTS.md) | Diretrizes de atuação para IAs e prompt-base externo. | Ativo |
 | [Commits.md](./Commits.md) | Padronização das mensagens de commit. | Em elaboração |
 | [decisions.md](./decisions.md) | Registro de decisões técnicas e suas justificativas. | Em elaboração |
 | [questionnaire.md](./questionnaire.md) | Dicionário das perguntas e dos tipos de variável. | Em elaboração |
