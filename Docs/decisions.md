@@ -60,6 +60,20 @@ realizada e suas consequências.
   normalização, análise e validação dos cálculos serão responsabilidade dos
   integrantes que desenvolverem o backend.
 
+## DEC-006 - Base visual e variantes do frontend
+
+- **Situação:** aceita
+- **Decisão:** utilizar Tailwind CSS para estilização, `class-variance-authority`
+  para declarar variantes e o conjunto `clsx` + `tailwind-merge` em um helper
+  `cn` para compor classes.
+- **Motivo:** manter os componentes reutilizáveis, tipados e fáceis de adaptar sem
+  duplicar combinações de estilos nas telas.
+- **Consequências:** os tokens visuais ficam centralizados no tema do Tailwind;
+  componentes compartilhados devem expor variantes em vez de replicar classes
+  localmente; o catálogo da rota `/components` documenta o comportamento atual.
+  Comportamentos auxiliares, como tooltips, devem ser associados por composição,
+  sem criar dependência obrigatória entre a marca gráfica e a interação.
+
 ## Decisões pendentes
 
 | Tema | Definição necessária | Impacto principal |

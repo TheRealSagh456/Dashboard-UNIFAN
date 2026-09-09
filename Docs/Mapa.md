@@ -17,6 +17,7 @@ atualizados sempre que uma decisão relevante for tomada.
 | `architecture.md` | Arquitetura, pastas, camadas e fluxo dos dados. | Pendente |
 | `business-rules.md` | Regras estatísticas e visualizações permitidas. | Pendente |
 | [import-format.md](./import-format.md) | Formatos de arquivo e regras de importação. | Em elaboração |
+| [design-system.md](./design-system.md) | Tokens visuais, componentes reutilizáveis e catálogo do frontend. | Ativo |
 | `api.md` | Contratos entre frontend e backend. | Pendente |
 | `testing.md` | Estratégia e casos de teste. | Pendente |
 | `team-guide.md` | Guia de colaboração para os integrantes. | Pendente |
