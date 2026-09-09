@@ -1,13 +1,11 @@
-import { Text } from "../components";
+import { HeroScene } from "../feats/home/hero-scene";
 
 export function HomePage() {
   return (
-    <div>
-      <div>
-        <Text variant="eyebrow" tone="accent" className="mb-2">
-          Hello World
-        </Text>
+    <main className="min-h-screen bg-canvas">
+      <div className="h-screen w-screen">
+        <HeroScene />
       </div>
-    </div>
+    </main>
   );
 }
