@@ -1,0 +1,124 @@
+@import "tailwindcss";
+
+@theme {
+  --color-canvas: #f2e8dc;
+  --color-paper: #fffaf4;
+  --color-surface: #f9f2e9;
+  --color-ink: #392b23;
+  --color-muted: #7c6e63;
+  --color-line: #e7d8c9;
+  --color-brand-50: #fff3e8;
+  --color-brand-100: #f8dfca;
+  --color-brand-200: #edc39f;
+  --color-brand-500: #c56e32;
+  --color-brand-600: #a9531f;
+  --color-brand-700: #87401a;
+  --color-brand-800: #69331a;
+  --color-positive: #47705c;
+  --color-warning: #a76b25;
+  --color-negative: #9c4e43;
+  --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --font-display: Georgia, "Times New Roman", serif;
+  --shadow-soft: 0 20px 60px rgb(94 57 31 / 0.08);
+  --shadow-card: 0 12px 35px rgb(94 57 31 / 0.07);
+}
+
+:root {
+  color: var(--color-ink);
+  background: var(--color-canvas);
+  font-family: var(--font-sans);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: var(--color-paper);
+  background: var(--color-brand-600);
+}
+
+@keyframes rise-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes chart-bar-rise-vertical {
+  from {
+    opacity: 0.35;
+    transform: scaleY(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleY(1);
+  }
+}
+
+@keyframes chart-bar-rise-horizontal {
+  from {
+    opacity: 0.35;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+.chart-bar-rise-vertical {
+  transform-origin: center bottom;
+  animation: chart-bar-rise-vertical 500ms ease-out both;
+}
+
+.chart-bar-rise-horizontal {
+  transform-origin: left center;
+  animation: chart-bar-rise-horizontal 500ms ease-out both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chart-bar-rise-horizontal,
+  .chart-bar-rise-vertical,
+  .gallery-enter {
+    animation: none;
+  }
+}
+
+.gallery-enter {
+  animation: rise-in 500ms ease-out both;
+}
+
+.gallery-enter:nth-child(2) {
+  animation-delay: 60ms;
+}
+
+.gallery-enter:nth-child(3) {
+  animation-delay: 120ms;
+}
