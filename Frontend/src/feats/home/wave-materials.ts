@@ -2,17 +2,17 @@ import {
   FrontSide,
   MeshPhysicalMaterial,
   PointsMaterial,
-  Vector2,
+  Vector4,
 } from "three";
 import type { Material, Texture } from "three";
 import { WAVE_SETTINGS } from "./wave-field";
+import { RIPPLE_SETTINGS } from "./ripple-field";
 
 // Uniforms são poucos valores compartilhados por todos os vértices na GPU.
 export function createWaveUniforms() {
   return {
     uWaveTime: { value: 0 },
-    uWaveCursor: { value: new Vector2() },
-    uWaveStrength: { value: 0 },
+    uRipples: { value: Array.from({ length: RIPPLE_SETTINGS.capacity }, () => new Vector4(0, 0, 0, 0)) },
   };
 }
 
@@ -20,8 +20,6 @@ export type WaveUniforms = ReturnType<typeof createWaveUniforms>;
 
 export const waveVertexFunctions = `
   uniform float uWaveTime;
-  uniform vec2 uWaveCursor;
-  uniform float uWaveStrength;
 
   float waveSquare(float v) { return v * v; }
 
@@ -41,8 +39,36 @@ export const waveVertexFunctions = `
     float detail = sin(x * 1.35 + y * 0.9 + phase) * 0.045;
     float height = (foldedSwell + crossingSwell + ridge + foregroundFold - valley + detail - 0.55)
       * ${WAVE_SETTINGS.amplitude.toFixed(4)};
-    float influence = max(0.0, 1.0 - distance(p, uWaveCursor) / ${WAVE_SETTINGS.cursorRadius.toFixed(4)});
-    return height - influence * influence * ${WAVE_SETTINGS.cursorDepth.toFixed(4)} * uWaveStrength;
+    return height;
+  }
+`;
+
+// A mesma expressão de sampleRippleHeight, executada em paralelo na GPU.
+export const rippleVertexFunctions = /* glsl */ `
+  float rippleHeightAt(float distance, float front, float amplitude) {
+    if (amplitude == 0.0) return 0.0;
+    float radius = sqrt(distance * distance + 0.04) - 0.2;
+    float offset = radius - front;
+    if (offset >= 0.0 || offset <= -${RIPPLE_SETTINGS.packetWidth.toFixed(4)}) return 0.0;
+    float envelope = sin(3.141592653589793 * offset / ${RIPPLE_SETTINGS.packetWidth.toFixed(4)});
+    float oscillation = sin(6.283185307179586 * offset / ${RIPPLE_SETTINGS.wavelength.toFixed(4)});
+    return amplitude * envelope * envelope * oscillation
+      / sqrt(1.0 + ${RIPPLE_SETTINGS.spreading.toFixed(4)} * radius);
+  }
+`;
+
+export const displacementFunctions = /* glsl */ `
+  uniform vec4 uRipples[${RIPPLE_SETTINGS.capacity}];
+
+  float displacedHeightAt(vec2 p) {
+    float height = waveHeightAt(p);
+    for (int i = 0; i < ${RIPPLE_SETTINGS.capacity}; i++) {
+      vec4 ripple = uRipples[i];
+      if (ripple.w > 0.0) {
+        height += rippleHeightAt(distance(p, ripple.xy), ripple.z, ripple.w);
+      }
+    }
+    return height;
   }
 `;
 
@@ -55,18 +81,18 @@ function addWaveDeformation(
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader.replace(
       "#include <common>",
-      `#include <common>\n${waveVertexFunctions}`,
+      `#include <common>\n${waveVertexFunctions}\n${rippleVertexFunctions}\n${displacementFunctions}`,
     );
 
     if (surface) {
       shader.vertexShader = shader.vertexShader.replace(
         "#include <beginnormal_vertex>",
         `
-          float waveHeight = waveHeightAt(position.xy);
+          float waveHeight = displacedHeightAt(position.xy);
           float epsilon = 0.025;
           vec3 objectNormal = normalize(vec3(
-            waveHeight - waveHeightAt(position.xy + vec2(epsilon, 0.0)),
-            waveHeight - waveHeightAt(position.xy + vec2(0.0, epsilon)),
+            waveHeight - displacedHeightAt(position.xy + vec2(epsilon, 0.0)),
+            waveHeight - displacedHeightAt(position.xy + vec2(0.0, epsilon)),
             epsilon
           ));
           #ifdef USE_TANGENT
@@ -78,22 +104,22 @@ function addWaveDeformation(
 
     shader.vertexShader = shader.vertexShader.replace(
       "#include <begin_vertex>",
-      `vec3 transformed = vec3(position.xy, ${surface ? "waveHeight" : "waveHeightAt(position.xy)"});`,
+      `vec3 transformed = vec3(position.xy, ${surface ? "waveHeight" : "displacedHeightAt(position.xy)"});`,
     );
   };
 
   material.customProgramCacheKey = () =>
-    `wave-v1-${surface}-${waveVertexFunctions}`;
+    `wave-v2-${surface}-${waveVertexFunctions}-${rippleVertexFunctions}-${displacementFunctions}`;
 }
 
 export function createWaveMaterials(mask: Texture, compact: boolean) {
   const uniforms = createWaveUniforms();
   const surface = new MeshPhysicalMaterial({
-    color: "#e7a878",
+    color: "#c56e32", // --color-brand-500 em index.css.
     roughness: 0.88,
     metalness: 0,
     sheen: 0.55,
-    sheenColor: "#fff3da",
+    sheenColor: "#fff3e8", // --color-brand-50.
     sheenRoughness: 0.85,
     specularIntensity: 0.25,
     side: FrontSide,
@@ -102,7 +128,7 @@ export function createWaveMaterials(mask: Texture, compact: boolean) {
     polygonOffsetUnits: 1,
   });
   const particles = new PointsMaterial({
-    color: "#fff8e9",
+    color: "#f8dfca", // --color-brand-100.
     vertexColors: true,
     alphaMap: mask,
     size: compact ? 0.048 : 0.034,
@@ -116,5 +142,6 @@ export function createWaveMaterials(mask: Texture, compact: boolean) {
   addWaveDeformation(surface, uniforms, true);
   addWaveDeformation(particles, uniforms, false);
   surface.userData.waveUniforms = uniforms;
+  surface.userData.rippleStarts = new Float64Array(RIPPLE_SETTINGS.capacity).fill(-Infinity);
   return { surface, particles, uniforms };
 }

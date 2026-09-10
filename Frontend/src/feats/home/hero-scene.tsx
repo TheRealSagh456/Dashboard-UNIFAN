@@ -7,7 +7,6 @@ import {
   Float32BufferAttribute,
   LinearFilter,
   PlaneGeometry,
-  Vector2,
   Vector3,
   Mesh,
 } from "three";
@@ -15,6 +14,7 @@ import { WAVE_SETTINGS } from "./wave-field";
 import { createWaveMaterials } from "./wave-materials";
 import type { WaveUniforms } from "./wave-materials";
 import { createWaveRaycast } from "./wave-raycast";
+import { startRipple, updateRipples } from "./ripple-field";
 
 const BACKGROUND = "#fae8d5";
 
@@ -38,12 +38,12 @@ function createParticleMask() {
 }
 
 function createParticleGeometry(compact: boolean) {
-  const { width, depth, segmentsX, segmentsY } = WAVE_SETTINGS;
+  const { width, depth } = WAVE_SETTINGS;
+  const segments = compact ? WAVE_SETTINGS.compactParticleSegments : WAVE_SETTINGS.particleSegments;
   const geometry = new PlaneGeometry(
     width,
     depth,
-    compact ? 176 : segmentsX,
-    compact ? 144 : segmentsY,
+    ...segments,
   );
   geometry.translate(0, 2, 0);
   const positions = geometry.attributes.position;
@@ -72,21 +72,21 @@ function createParticleGeometry(compact: boolean) {
   particles.setAttribute("position", positions);
   particles.setAttribute("color", new Float32BufferAttribute(colors, 3));
   particles.computeBoundingSphere();
-  if (particles.boundingSphere) particles.boundingSphere.radius += 6;
+  if (particles.boundingSphere) particles.boundingSphere.radius += 8;
   geometry.dispose();
   return particles;
 }
 
 function createSurfaceGeometry(compact: boolean) {
+  const segments = compact ? WAVE_SETTINGS.compactSurfaceSegments : WAVE_SETTINGS.surfaceSegments;
   const geometry = new PlaneGeometry(
     WAVE_SETTINGS.width,
     WAVE_SETTINGS.depth,
-    compact ? 96 : 160,
-    compact ? 80 : 128,
+    ...segments,
   );
   geometry.translate(0, 2, 0);
   geometry.computeBoundingSphere();
-  if (geometry.boundingSphere) geometry.boundingSphere.radius += 6;
+  if (geometry.boundingSphere) geometry.boundingSphere.radius += 8;
   return geometry;
 }
 
@@ -127,12 +127,13 @@ function LearningPlane({
     [materials],
   );
   const surfaceRef = useRef<Mesh<PlaneGeometry>>(null);
-  const cursorTarget = useRef(new Vector2());
-  const cursorCurrent = useRef(new Vector2());
   const localHit = useRef(new Vector3());
 
-  const interactionTarget = useRef(0);
-  const interactionStrength = useRef(0);
+  const resuming = useRef(true);
+
+  useEffect(() => {
+    resuming.current = true;
+  }, [paused, reducedMotion]);
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => particleGeometry.dispose(), [particleGeometry]);
@@ -150,21 +151,18 @@ function LearningPlane({
     if (!surface || Array.isArray(surface.material)) return;
     const uniforms = surface.material.userData.waveUniforms as WaveUniforms;
     if (reducedMotion) {
-      uniforms.uWaveStrength.value = 0;
+      for (const ripple of uniforms.uRipples.value) ripple.w = 0;
+      (surface.material.userData.rippleStarts as Float64Array).fill(-Infinity);
       return;
     }
     if (paused) return;
-    const step = Math.min(delta, 0.05);
-    const smoothing = 1 - Math.exp(-10 * step);
-
-    cursorCurrent.current.lerp(cursorTarget.current, smoothing);
-
-    interactionStrength.current +=
-      (interactionTarget.current - interactionStrength.current) * smoothing;
-
+    // Tempo real entre frames, sem desacelerar a física em aparelhos mais lentos.
+    // Ao retomar, descarta somente o intervalo em que a cena ficou pausada.
+    const step = resuming.current ? 0 : delta;
+    resuming.current = false;
     uniforms.uWaveTime.value += step;
-    uniforms.uWaveCursor.value.copy(cursorCurrent.current);
-    uniforms.uWaveStrength.value = interactionStrength.current;
+    // Só quatro impulsos: sem percorrer a malha nem atualizar estado React.
+    updateRipples(surface.material.userData.rippleStarts, uniforms.uRipples.value, uniforms.uWaveTime.value);
   });
 
   return (
@@ -174,14 +172,14 @@ function LearningPlane({
         geometry={geometry}
         material={materials.surface}
         raycast={raycast}
-        onPointerMove={(event) => {
-          if (reducedMotion) return;
+        onClick={(event) => {
+          if (reducedMotion || paused || event.button !== 0 || event.delta > 5) return;
+          const surface = surfaceRef.current;
+          if (!surface || Array.isArray(surface.material)) return;
+          const uniforms = surface.material.userData.waveUniforms as WaveUniforms;
           event.object.worldToLocal(localHit.current.copy(event.point));
-          cursorTarget.current.set(localHit.current.x, localHit.current.y);
-          interactionTarget.current = 1;
-        }}
-        onPointerLeave={() => {
-          interactionTarget.current = 0;
+          startRipple(surface.material.userData.rippleStarts, uniforms.uRipples.value,
+            localHit.current.x, localHit.current.y, uniforms.uWaveTime.value);
         }}
       />
 
@@ -228,7 +226,7 @@ export function HeroScene() {
       <Canvas
         camera={{ position: [0, 3.3, 8.8], fov: 43, near: 0.1, far: 65 }}
         frameloop={reducedMotion || paused ? "demand" : "always"}
-        dpr={[1, 1.25]}
+        dpr={1}
         gl={{ antialias: true }}
         fallback={
           <div className="h-full w-full" style={{ background: BACKGROUND }} />

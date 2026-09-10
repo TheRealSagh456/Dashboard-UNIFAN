@@ -2,12 +2,12 @@
 export const WAVE_SETTINGS = {
   width: 28,
   depth: 22,
-  segmentsX: 288,
-  segmentsY: 224,
+  surfaceSegments: [128, 96],
+  compactSurfaceSegments: [96, 72],
+  particleSegments: [160, 128],
+  compactParticleSegments: [112, 80],
   amplitude: 1.15,
   speed: 0.24,
-  cursorRadius: 0.8,
-  cursorDepth: 0.65,
 } as const;
 
 export function sampleWaveHeight(x: number, y: number, time: number) {

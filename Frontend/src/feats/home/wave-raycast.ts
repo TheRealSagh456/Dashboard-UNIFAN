@@ -2,33 +2,22 @@ import { Matrix4, Ray, Vector3 } from "three";
 import type { Mesh } from "three";
 import { sampleWaveHeight, WAVE_SETTINGS } from "./wave-field";
 import type { WaveUniforms } from "./wave-materials";
+import { sampleRippleHeight } from "./ripple-field";
 
 export function createWaveRaycast(uniforms: WaveUniforms): Mesh["raycast"] {
   const inverse = new Matrix4();
   const localRay = new Ray();
   const point = new Vector3();
-  const minimum = [-WAVE_SETTINGS.width / 2, 2 - WAVE_SETTINGS.depth / 2, -4];
-  const maximum = [WAVE_SETTINGS.width / 2, 2 + WAVE_SETTINGS.depth / 2, 6];
+  const minimum = [-WAVE_SETTINGS.width / 2, 2 - WAVE_SETTINGS.depth / 2, -5];
+  const maximum = [WAVE_SETTINGS.width / 2, 2 + WAVE_SETTINGS.depth / 2, 7];
 
   function residual(distance: number) {
     localRay.at(distance, point);
-    const cursor = uniforms.uWaveCursor.value;
-    const influence = Math.max(
-      0,
-      1 -
-        Math.hypot(point.x - cursor.x, point.y - cursor.y) /
-          WAVE_SETTINGS.cursorRadius,
-    );
-    const lift =
-      influence *
-      influence *
-      WAVE_SETTINGS.cursorDepth *
-      uniforms.uWaveStrength.value;
-    return (
-      point.z -
-      sampleWaveHeight(point.x, point.y, uniforms.uWaveTime.value) +
-      lift
-    );
+    let height = sampleWaveHeight(point.x, point.y, uniforms.uWaveTime.value);
+    for (const ripple of uniforms.uRipples.value) {
+      if (ripple.w > 0) height += sampleRippleHeight(Math.hypot(point.x - ripple.x, point.y - ripple.y), ripple.z, ripple.w);
+    }
+    return point.z - height;
   }
 
   return function (this: Mesh, raycaster, intersections) {

@@ -81,16 +81,21 @@ referência. A cena é decorativa e não representa resultados da pesquisa.
 
 - Superfície contínua com `MeshPhysicalMaterial`: `roughness=0.88`,
   `metalness=0`, `sheen=0.55`, `sheenRoughness=0.85` e
-  `specularIntensity=0.25`. Não há transmissão, clearcoat ou bloom.
-- Partículas em `PointsMaterial`, creme, com máscara circular procedural,
+  `specularIntensity=0.25`, renderizando somente a frente (`FrontSide`).
+  Não há transmissão, clearcoat ou bloom.
+- A superfície usa o terracota alaranjado `brand-500` (`#c56e32`); o brilho
+  acetinado usa `brand-50` (`#fff3e8`) e as partículas, `brand-100` (`#f8dfca`).
+  São os mesmos valores sRGB dos tokens em `Frontend/src/index.css`, conferidos
+  pelo teste das ondas. Fundo, névoa, iluminação e acabamento foram mantidos.
+- Partículas em `PointsMaterial`, creme, atualmente com máscara uniforme quadrada,
   variação determinística de luminosidade, opacidade `0.72` e tamanho `0.034`
   (`0.048` em telas estreitas). O depth test preserva a oclusão dos vales pelas
   cristas; apenas as partículas deixam de escrever no depth buffer.
-- Superfície e partículas compartilham o buffer de posições. A geometria das
-  partículas não possui os índices dos triângulos, para desenhar cada ponto
-  uma única vez. A posição dos pontos tem
-  um deslocamento local de `0.012` para evitar conflito de profundidade. As
-  subdivisões têm pequena irregularidade fixa para suavizar a aparência de grade.
+- Superfície e partículas têm geometrias independentes, mas compartilham as
+  fórmulas de deformação e os uniforms dos shaders. As partículas não possuem
+  índices, desenhando cada ponto uma única vez, com deslocamento local de `0.025`
+  para reduzir conflito de profundidade. Suas posições têm pequena irregularidade
+  fixa para suavizar a aparência de grade.
 - Câmera em `[0, 3.3, 8.8]`, olhando para `[0, -0.1, -3.2]`, com `fov=43`:
   aproximadamente 16 graus abaixo da horizontal. Em larguras menores que
   640 px, câmera e alvo se deslocam `2.1` unidades no eixo X para manter a crista
@@ -110,22 +115,70 @@ de fluido. Em uma amostragem de 36.360 posições nos tempos 0, 10, 30 e 60 s,
 as alturas locais ficaram entre aproximadamente −1,66 e +3,06 unidades,
 antes da interação; esse intervalo amostrado não é um limite matemático.
 
-O cursor é obtido por raycasting na superfície deformada e convertido para
-coordenadas locais com `worldToLocal`. O raio de influência é `0.8` e a
-depressão máxima é `0.65`. Posição e intensidade usam amortecimento exponencial;
-a influência desaparece gradualmente ao sair da superfície.
+A única deformação interativa é a ondulação do clique/toque. Mover o cursor
+não dobra nem atrai a superfície: os handlers de hover, seus uniforms e os
+cálculos de influência foram removidos da CPU e da GPU. O movimento procedural
+de fundo continua. O ponto do clique é obtido por raycasting numérico na fórmula
+da superfície deformada e convertido para coordenadas locais com `worldToLocal`.
+
+### Ondulação a partir do clique
+
+`Frontend/src/feats/home/ripple-field.ts` concentra `RIPPLE_SETTINGS`, o ciclo de
+vida dos impulsos e a referência numérica da ondulação. O clique primário ou toque
+na superfície cria um pacote radial no ponto local da interseção. Arrastos acima
+de 5 px não geram impulsos; o botão HTML sobreposto continua interceptando seus
+próprios cliques.
+
+- Velocidade de propagação: 3 unidades/s; comprimento de onda: 1,6 unidade.
+- Largura do pacote: 3,2 unidades, contendo cristas e vales alternados.
+- Amplitude base: 0,38; amortecimento temporal exponencial de coeficiente 0,38/s
+  e atenuação espacial proporcional a `1 / sqrt(1 + 0.65 * raio)`.
+- Entrada suave de 0,16 s, duração de 4,8 s e desaparecimento suave nos últimos
+  0,8 s. A função é zero fora do pacote e suavizada no centro do clique.
+- Até quatro impulsos simultâneos, somados linearmente: podem se reforçar ou
+  cancelar parcialmente. Com o conjunto cheio, cliques adicionais são ignorados
+  até um impulso terminar; nenhuma onda ativa é cortada abruptamente.
+
+É uma aproximação analítica de ondas em uma membrana com propagação radial nas
+coordenadas do plano, não uma solução completa da dinâmica de fluidos. Não há
+reflexão nas bordas, transporte de massa nem interação não linear. A aparência
+ondulada preexistente continua sendo um campo procedural, somado aos impulsos.
+
+O shader em `wave-materials.ts` desloca tanto superfície quanto partículas e
+recalcula a direção de iluminação por diferenças finitas, com passo `0.025`.
+`wave-raycast.ts` inclui os mesmos impulsos para localizar novos cliques sobre
+o relevo em movimento. As versões JS e GLSL devem permanecer sincronizadas.
 
 ### Desempenho e acessibilidade
 
-A geometria tem 65.025 vértices no desktop e 25.665 em larguras abaixo de 640 px.
-As alturas continuam sendo calculadas no JavaScript para manter o código de
-aprendizagem inspecionável. Posições e normais são atualizadas até 30 vezes por
-segundo, compartilhadas pelas duas passagens de desenho. O DPR fica limitado
-ao intervalo de 1 a 1,5. As geometrias e a máscara são descartadas ao desmontar.
-Migrar a deformação para a GPU permanece uma possibilidade de otimização.
+As densidades ficam em `WAVE_SETTINGS`, separando a silhueta da granulação:
+
+| Perfil | Vértices da superfície | Triângulos | Partículas |
+| :--- | ---: | ---: | ---: |
+| Desktop | 12.513 | 24.576 | 20.769 |
+| Largura abaixo de 640 px | 7.081 | 13.824 | 9.153 |
+
+Em relação à versão GPU anterior, o desktop passa de 40.960 para 24.576 triângulos
+e de 65.025 para 20.769 partículas. O DPR é 1, priorizando fluidez em vez de
+resolução extra em telas de alta densidade. Materiais e enquadramento existentes
+foram preservados; a granulação fica menos densa.
+
+Não há atualização de todos os vértices nem `computeVertexNormals` na CPU por
+frame. A GPU calcula alturas e normais; o JavaScript atualiza apenas tempo
+e quatro vetores reutilizados de impulsos. O amortecimento temporal dos impulsos
+é pré-calculado uma vez por impulso/frame. A evolução usa tempo transcorrido,
+independente do número de frames. A cena pausa fora da área visível ou com a aba
+oculta e desconsidera o intervalo de pausa ao retomar.
+
+O raycasting busca a primeira interseção com a fórmula em até 192 passos, com
+refinamento por 12 bisseções; não percorre todos os triângulos. É uma aproximação
+numérica, não uma interseção exata com os triângulos desenhados. Geometrias têm
+limites de visibilidade expandidos para comportar a deformação na GPU. Geometrias,
+materiais e máscara são descartados ao desmontar. `land-page.tsx` mantém a cena
+em carregamento separado com `lazy`/`Suspense` e fundo creme durante a espera.
 
 Com `prefers-reduced-motion`, esta cena mantém uma pose estática e não aplica
-a deformação pelo cursor. O Canvas é decorativo (`aria-hidden`) e tem um fundo
+os impulsos de clique. O Canvas é decorativo (`aria-hidden`) e tem um fundo
 alternativo quando WebGL não está disponível. O conteúdo HTML fica em outra
 camada. Essas garantias dizem respeito à cena; as animações Motion do conteúdo
 da Home continuam como estavam nesta etapa.
@@ -133,3 +186,21 @@ da Home continuam como estavam nesta etapa.
 A propriedade `as` do componente `Text` é restrita a componentes compatíveis
 com atributos HTML. Isso evita conflito de tipagem com os elementos 3D que o
 React Three Fiber acrescenta ao JSX.
+
+### Validação das ondas
+
+Em `Frontend`, executar `npm run build`, `npm run lint` e
+`node scripts/check-waves.mjs`. O script verifica equivalência das expressões
+JS/GLSL em precisão dupla, propagação localizada, amortecimento, superposição,
+reutilização do conjunto de impulsos e independência da taxa de frames. Compara
+também o raycast numérico com uma malha densa deformada, incluindo raios da câmera
+inclinada e quatro impulsos ativos. Confere a ausência de handlers/uniforms de
+hover e a correspondência das cores dos materiais com os tokens da paleta.
+
+Após remover os cenários de intensidade do hover, 20.172 amostras de fórmulas
+e 675 raios passaram;
+o maior desvio de distância do raycast foi aproximadamente 0,016 unidade. Esses
+testes não compilam GLSL em WebGL nem medem FPS. A inspeção visual desta versão
+com impulsos ficou pendente porque a ferramenta de navegador foi bloqueada por
+falta de créditos do ambiente. O build mantém o aviso de chunk da cena acima de
+500 kB, apesar do carregamento separado.
