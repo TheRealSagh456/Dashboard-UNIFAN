@@ -32,7 +32,7 @@ const textStyles = cva('', {
 
 type TextProps = HTMLAttributes<HTMLElement> &
   VariantProps<typeof textStyles> & {
-    as?: ElementType
+    as?: ElementType<HTMLAttributes<HTMLElement>>
   }
 
 export function Text({

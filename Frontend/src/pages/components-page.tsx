@@ -274,7 +274,7 @@ export function ComponentsPage() {
       />
 
       <header className="sticky top-0 z-40 border-b border-line/80 bg-canvas/85 backdrop-blur-xl">
-        <div className="mx-auto flex h-17 max-w-[1500px] items-center gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-17 max-w-375 items-center gap-4 px-4 sm:px-6 lg:px-8">
           <button
             type="button"
             className="grid size-10 place-items-center rounded-full border border-line bg-paper text-ink lg:hidden"
@@ -318,7 +318,7 @@ export function ComponentsPage() {
         </div>
       </header>
 
-      <div className="relative mx-auto grid max-w-[1500px] lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="relative mx-auto grid max-w-375 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside
           className={cn(
             "fixed inset-x-4 top-20 z-30 rounded-2xl border border-line bg-paper p-3 shadow-soft transition lg:sticky lg:inset-auto lg:top-17 lg:block lg:h-[calc(100vh-4.25rem)] lg:rounded-none lg:border-0 lg:border-r lg:bg-transparent lg:px-6 lg:py-8 lg:shadow-none",
@@ -867,12 +867,12 @@ export function ComponentsPage() {
               hidden={!visibleSections.has("navigation")}
             >
               <div className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
-                <Card>
+                <Card className="flex flex-col items-center justify-center">
                   <Stepper
                     steps={["Importar", "Configurar", "Finalizar"]}
                     currentStep={currentStep}
                   />
-                  <div className="mt-8 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 border-t border-line pt-5">
+                  <div className="mt-8 grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-10 border-t border-line pt-5">
                     <Button
                       variant="ghost"
                       size="sm"
