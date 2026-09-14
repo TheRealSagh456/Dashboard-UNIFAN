@@ -1,4 +1,5 @@
 import {
+  Color,
   FrontSide,
   MeshPhysicalMaterial,
   PointsMaterial,
@@ -12,6 +13,8 @@ import { RIPPLE_SETTINGS } from "./ripple-field";
 export function createWaveUniforms() {
   return {
     uWaveTime: { value: 0 },
+    uGlowColor: { value: new Color(RIPPLE_SETTINGS.color) },
+    uGlowIntensity: { value: RIPPLE_SETTINGS.intensity },
     uRipples: { value: Array.from({ length: RIPPLE_SETTINGS.capacity }, () => new Vector4(0, 0, 0, 0)) },
   };
 }
@@ -43,32 +46,37 @@ export const waveVertexFunctions = `
   }
 `;
 
-// A mesma expressão de sampleRippleHeight, executada em paralelo na GPU.
-export const rippleVertexFunctions = /* glsl */ `
-  float rippleHeightAt(float distance, float front, float amplitude) {
-    if (amplitude == 0.0) return 0.0;
-    float radius = sqrt(distance * distance + 0.04) - 0.2;
-    float offset = radius - front;
-    if (offset >= 0.0 || offset <= -${RIPPLE_SETTINGS.packetWidth.toFixed(4)}) return 0.0;
-    float envelope = sin(3.141592653589793 * offset / ${RIPPLE_SETTINGS.packetWidth.toFixed(4)});
-    float oscillation = sin(6.283185307179586 * offset / ${RIPPLE_SETTINGS.wavelength.toFixed(4)});
-    return amplitude * envelope * envelope * oscillation
-      / sqrt(1.0 + ${RIPPLE_SETTINGS.spreading.toFixed(4)} * radius);
+// Coroa fina + halo suave, sem deslocamento e sem uma passagem extra de bloom.
+export const glowRingFunction = /* glsl */ `
+  float glowRingAt(float radialDistance, float radius, float strength, float pixelWidth) {
+    if (strength <= 0.0) return 0.0;
+    float offset = abs(radialDistance - radius);
+    float feather = max(pixelWidth, 0.01);
+    float core = 1.0 - smoothstep(${RIPPLE_SETTINGS.coreWidth.toFixed(4)}, ${RIPPLE_SETTINGS.coreWidth.toFixed(4)} + feather, offset);
+    float halo = 1.0 - smoothstep(0.0, ${RIPPLE_SETTINGS.haloWidth.toFixed(4)}, offset);
+    return (core + halo * halo * ${RIPPLE_SETTINGS.haloStrength.toFixed(4)}) * strength;
   }
 `;
 
-export const displacementFunctions = /* glsl */ `
+const glowFragmentFunctions = /* glsl */ `
+  varying vec2 vWavePosition;
   uniform vec4 uRipples[${RIPPLE_SETTINGS.capacity}];
+  uniform vec3 uGlowColor;
+  uniform float uGlowIntensity;
+  ${glowRingFunction}
 
-  float displacedHeightAt(vec2 p) {
-    float height = waveHeightAt(p);
+  float glowAt(vec2 p) {
+    float glow = 0.0;
+    // Derivadas fora dos branches: antialiasing mesmo nas partes distantes.
+    float pixelWidth = max(length(fwidth(p)), 0.01);
     for (int i = 0; i < ${RIPPLE_SETTINGS.capacity}; i++) {
       vec4 ripple = uRipples[i];
       if (ripple.w > 0.0) {
-        height += rippleHeightAt(distance(p, ripple.xy), ripple.z, ripple.w);
+        glow += glowRingAt(distance(p, ripple.xy), ripple.z, ripple.w, pixelWidth);
       }
     }
-    return height;
+    // Sobreposições iluminam mais, mas não estouram a tela com quatro cliques.
+    return min(glow, 1.7);
   }
 `;
 
@@ -81,18 +89,18 @@ function addWaveDeformation(
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = shader.vertexShader.replace(
       "#include <common>",
-      `#include <common>\n${waveVertexFunctions}\n${rippleVertexFunctions}\n${displacementFunctions}`,
+      `#include <common>\n${waveVertexFunctions}\nvarying vec2 vWavePosition;`,
     );
 
     if (surface) {
       shader.vertexShader = shader.vertexShader.replace(
         "#include <beginnormal_vertex>",
         `
-          float waveHeight = displacedHeightAt(position.xy);
+          float waveHeight = waveHeightAt(position.xy);
           float epsilon = 0.025;
           vec3 objectNormal = normalize(vec3(
-            waveHeight - displacedHeightAt(position.xy + vec2(epsilon, 0.0)),
-            waveHeight - displacedHeightAt(position.xy + vec2(0.0, epsilon)),
+            waveHeight - waveHeightAt(position.xy + vec2(epsilon, 0.0)),
+            waveHeight - waveHeightAt(position.xy + vec2(0.0, epsilon)),
             epsilon
           ));
           #ifdef USE_TANGENT
@@ -104,12 +112,26 @@ function addWaveDeformation(
 
     shader.vertexShader = shader.vertexShader.replace(
       "#include <begin_vertex>",
-      `vec3 transformed = vec3(position.xy, ${surface ? "waveHeight" : "displacedHeightAt(position.xy)"});`,
+      `vWavePosition = position.xy;\nvec3 transformed = vec3(position.xy, ${surface ? "waveHeight" : "waveHeightAt(position.xy)"});`,
+    );
+
+    shader.fragmentShader = shader.fragmentShader.replace(
+      "#include <common>",
+      `#include <common>\n${glowFragmentFunctions}`,
+    ).replace(
+      "#include <opaque_fragment>",
+      /* glsl */ `
+        float ringGlow = glowAt(vWavePosition);
+        // Um centro perolado conserva o pêssego nas bordas do halo.
+        vec3 ringColor = mix(uGlowColor, vec3(1.0), smoothstep(0.7, 1.3, ringGlow) * 0.22);
+        outgoingLight += ringColor * ringGlow * uGlowIntensity * ${surface ? "1.0" : "0.7"};
+        #include <opaque_fragment>
+      `,
     );
   };
 
   material.customProgramCacheKey = () =>
-    `wave-v2-${surface}-${waveVertexFunctions}-${rippleVertexFunctions}-${displacementFunctions}`;
+    `wave-glow-v3-${surface}-${waveVertexFunctions}-${glowFragmentFunctions}`;
 }
 
 export function createWaveMaterials(mask: Texture, compact: boolean) {

@@ -2,9 +2,8 @@ import { Matrix4, Ray, Vector3 } from "three";
 import type { Mesh } from "three";
 import { sampleWaveHeight, WAVE_SETTINGS } from "./wave-field";
 import type { WaveUniforms } from "./wave-materials";
-import { sampleRippleHeight } from "./ripple-field";
 
-export function createWaveRaycast(uniforms: WaveUniforms): Mesh["raycast"] {
+export function createWaveRaycast(uniforms: Pick<WaveUniforms, "uWaveTime">): Mesh["raycast"] {
   const inverse = new Matrix4();
   const localRay = new Ray();
   const point = new Vector3();
@@ -13,10 +12,8 @@ export function createWaveRaycast(uniforms: WaveUniforms): Mesh["raycast"] {
 
   function residual(distance: number) {
     localRay.at(distance, point);
-    let height = sampleWaveHeight(point.x, point.y, uniforms.uWaveTime.value);
-    for (const ripple of uniforms.uRipples.value) {
-      if (ripple.w > 0) height += sampleRippleHeight(Math.hypot(point.x - ripple.x, point.y - ripple.y), ripple.z, ripple.w);
-    }
+    // O brilho não altera a geometria: cliques não influenciam a interseção.
+    const height = sampleWaveHeight(point.x, point.y, uniforms.uWaveTime.value);
     return point.z - height;
   }
 
