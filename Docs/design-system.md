@@ -30,6 +30,19 @@ O índice `Frontend/src/components/index.ts` exporta:
 - `MetricCard`: apresentação compacta de indicadores;
 - `NavigationItem`: item padronizado de navegação lateral;
 - `Stepper`: indicação de progresso entre etapas.
+- `QuestionsGrid`: grade editável baseada no MUI X Data Grid para revisar o papel
+  das colunas importadas e o tipo estatístico das perguntas.
+
+## Grades de dados
+
+O MUI X Data Grid é usado nas interfaces tabulares que precisam de recursos como
+edição, ordenação, filtragem, paginação e virtualização. O Tailwind CSS continua
+sendo a base visual geral da aplicação; o tema do Material UI apenas aproxima as
+grades dos mesmos tokens de cor, tipografia e borda.
+
+A primeira grade está na etapa `Configurar` da importação. Enquanto a API de
+importação não estiver integrada, ela recebe linhas mockadas com perguntas e
+metadados. As colunas `Classificação` e `Tipo da variável` podem ser editadas.
 
 ## Variantes e composição de classes
 

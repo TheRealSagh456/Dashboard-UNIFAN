@@ -1,5 +1,5 @@
 import { cva, type VariantProps } from 'class-variance-authority'
-import type { ElementType, HTMLAttributes } from 'react'
+import { createElement, type ElementType, type HTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 const textStyles = cva('', {
@@ -42,5 +42,8 @@ export function Text({
   className,
   ...props
 }: TextProps) {
-  return <Component className={cn(textStyles({ variant, tone }), className)} {...props} />
+  return createElement(Component, {
+    ...props,
+    className: cn(textStyles({ variant, tone }), className),
+  })
 }

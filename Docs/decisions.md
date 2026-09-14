@@ -74,6 +74,17 @@ realizada e suas consequências.
   Comportamentos auxiliares, como tooltips, devem ser associados por composição,
   sem criar dependência obrigatória entre a marca gráfica e a interação.
 
+## DEC-007 - Grades tabulares do frontend
+
+- **Situação:** aceita
+- **Decisão:** utilizar a versão Community do MUI X Data Grid nas interfaces
+  tabulares de configuração e visualização de dados.
+- **Motivo:** fornecer edição de células e linhas, filtros, ordenação, paginação e
+  virtualização sem implementar esses comportamentos manualmente.
+- **Consequências:** o Material UI e o Emotion são dependências do frontend; seu
+  tema deve acompanhar os tokens visuais existentes; o Tailwind CSS permanece
+  como base de estilização dos demais componentes e telas.
+
 ## Decisões pendentes
 
 | Tema | Definição necessária | Impacto principal |
