@@ -3,7 +3,9 @@ import {
   LucideArrowRight,
   LucideCheck,
   LucideCloudUpload,
+  LucideFilter,
   LucideLink,
+  LucideSearch,
   LucideUpload,
 } from "lucide-react";
 import {
@@ -20,74 +22,60 @@ import type { PerguntaRow } from "../components/ui/question-grid";
 
 const perguntasMockadas: PerguntaRow[] = [
   {
-    id: "meta-data-hora",
-    codigo: "META-01",
-    enunciado: "Data e hora de envio",
-    papel: "Metadado",
-    tipo: null,
-  },
-  {
-    id: "meta-identificador",
-    codigo: "META-02",
-    enunciado: "Identificador externo",
-    papel: "Metadado",
-    tipo: null,
-  },
-  {
-    id: "meta-email",
-    codigo: "META-03",
-    enunciado: "E-mail",
-    papel: "Metadado",
-    tipo: null,
-  },
-  {
     id: "q01",
     codigo: "Q01",
-    enunciado: "Qual é a sua idade?",
+    pergunta: "Qual é a sua idade?",
     papel: "Pergunta",
-    tipo: "Quantitativa discreta",
+    tipo: "Quantitativa",
+    classificacao: "Discreta",
   },
   {
     id: "q03",
     codigo: "Q03",
-    enunciado: "Quantas horas por dia você usa a internet?",
+    pergunta: "Quantas horas por dia você usa a internet?",
     papel: "Pergunta",
-    tipo: "Quantitativa contínua",
+    tipo: "Quantitativa",
+    classificacao: "Contínua",
   },
   {
     id: "q11",
     codigo: "Q11",
-    enunciado: "Qual é o seu gênero?",
+    pergunta: "Qual é o seu gênero?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    classificacao: "Nominal",
   },
   {
     id: "q12",
     codigo: "Q12",
-    enunciado: "Qual é a sua escolaridade?",
+    pergunta: "Qual é a sua escolaridade?",
     papel: "Pergunta",
-    tipo: "Qualitativa ordinal",
+    tipo: "Qualitativa",
+    classificacao: "Ordinal",
   },
   {
     id: "q14",
     codigo: "Q14",
-    enunciado: "Qual ferramenta de IA você mais utiliza?",
+    pergunta: "Qual ferramenta de IA você mais utiliza?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    classificacao: "Nominal",
   },
   {
     id: "q15",
     codigo: "Q15",
-    enunciado: "Com que frequência você utiliza ferramentas de IA?",
+    pergunta: "Com que frequência você utiliza ferramentas de IA?",
     papel: "Pergunta",
-    tipo: "Qualitativa ordinal",
+    tipo: "Qualitativa",
+    classificacao: "Ordinal",
   },
   {
     id: "q24",
     codigo: "Q24",
-    enunciado: "Qual sistema operacional de celular você utiliza?",
+    pergunta: "Qual sistema operacional de celular você utiliza?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    classificacao: "Nominal",
   },
 ];
 
@@ -96,23 +84,40 @@ export function ImportPage() {
 
   const navigate = useNavigate();
   return (
-    <div className="flex justify-center items-center h-screen flex-col gap-10 w-auto">
+    <div className="flex justify-center items-center h-screen flex-col gap-10">
       <Stepper
         currentStep={etapa}
         steps={["Importar", "Configurar", "Finalizar"]}
         className="w-2xl"
       />
-      <div className="w-auto flex flex-col justify-center">
+      <div className="w-2xl flex flex-col justify-center">
         {etapa == 2 && (
-          <div className="flex flex-col gap-2 pb-5">
-            <Text variant={"data"}>Configure suas perguntas</Text>
-            <Text variant={"label"}>
-              Analise a classificação das variáveis. Você pode editar as
-              informações se necessário.
-            </Text>
+          <div className="flex flex-col">
+            <div className="flex flex-col gap-2">
+              <Text variant={"data"}>Configure suas perguntas</Text>
+              <Text variant={"label"}>
+                Analise a classificação das variáveis. Você pode editar as
+                informações se necessário.
+              </Text>
+            </div>
+            <div className="flex gap-2 justify-end py-3">
+              <div className="relative w-full">
+                <TextField
+                  placeholder="Buscar pergunta..."
+                  className="w-full pl-11"
+                />
+                <LucideSearch
+                  color="gray"
+                  className="pointer-events-none absolute top-1/2 left-3 z-10 size-5 -translate-y-1/2"
+                />
+              </div>
+              <Button variant={"primary"}>
+                <LucideFilter />
+              </Button>
+            </div>
           </div>
         )}
-        <Card className="flex flex-col items-center gap-4 w-auto">
+        <Card className="flex flex-col items-center gap-4 w-2xl">
           {etapa == 1 && (
             <>
               <LucideUpload size={50} color="#a9531f" />
@@ -161,9 +166,17 @@ export function ImportPage() {
               </div>
             </>
           )}
-          {etapa == 2 && (
-            <QuestionsGrid perguntasIniciais={perguntasMockadas} />
-          )}
+          {etapa == 2 &&
+            perguntasMockadas.map((item) => (
+              <QuestionsGrid
+                classificacao={item.classificacao}
+                codigo={item.codigo}
+                id={item.id}
+                papel={item.papel}
+                pergunta={item.pergunta}
+                tipo={item.tipo}
+              />
+            ))}
         </Card>
         <div className="flex justify-between items-center pt-5">
           <Button

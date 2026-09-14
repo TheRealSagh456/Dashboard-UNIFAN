@@ -1,14 +1,14 @@
-import type { InputHTMLAttributes, ReactNode } from 'react'
-import { useId } from 'react'
-import { cn } from '../../lib/cn'
-import { Text } from './typography'
+import type { ComponentProps, ReactNode } from "react";
+import { useId } from "react";
+import { cn } from "../../lib/cn";
+import { Text } from "./typography";
 
-type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'size'> & {
-  label?: string
-  hint?: string
-  error?: string
-  leadingIcon?: ReactNode
-}
+type TextFieldProps = Omit<ComponentProps<"input">, "size"> & {
+  label?: string;
+  hint?: string;
+  error?: string;
+  leadingIcon?: ReactNode;
+};
 
 export function TextField({
   id,
@@ -19,9 +19,9 @@ export function TextField({
   className,
   ...props
 }: TextFieldProps) {
-  const generatedId = useId()
-  const inputId = id ?? generatedId
-  const messageId = `${inputId}-message`
+  const generatedId = useId();
+  const inputId = id ?? generatedId;
+  const messageId = `${inputId}-message`;
 
   return (
     <label htmlFor={inputId} className="grid gap-1.5">
@@ -35,9 +35,10 @@ export function TextField({
         <input
           id={inputId}
           className={cn(
-            'h-11 w-full rounded-xl border border-line bg-paper px-3 text-sm text-ink outline-none transition placeholder:text-muted/65 focus:border-brand-500 focus:ring-3 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-surface disabled:opacity-60',
-            leadingIcon && 'pl-10',
-            error && 'border-negative focus:border-negative focus:ring-negative/10',
+            "h-11 w-full rounded-xl border border-line bg-paper px-3 text-sm text-ink outline-none transition placeholder:text-muted/65 focus:border-brand-500 focus:ring-3 focus:ring-brand-100 disabled:cursor-not-allowed disabled:bg-surface disabled:opacity-60",
+            leadingIcon && "pl-10",
+            error &&
+              "border-negative focus:border-negative focus:ring-negative/10",
             className,
           )}
           aria-invalid={error ? true : undefined}
@@ -50,11 +51,11 @@ export function TextField({
           id={messageId}
           as="span"
           variant="caption"
-          tone={error ? 'negative' : 'muted'}
+          tone={error ? "negative" : "muted"}
         >
           {error ?? hint}
         </Text>
       )}
     </label>
-  )
+  );
 }
