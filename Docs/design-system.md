@@ -23,6 +23,8 @@ O índice `Frontend/src/components/index.ts` exporta:
 - `Card`: superfícies elevada, contornada, tonal e interativa;
 - `Badge`: indicadores neutro, de marca e semânticos;
 - `TextField`: campo com rótulo, ajuda, erro e ícone;
+- `Tag`: marcador com ponto colorido nas variantes `chart` e `grid`; a variante
+  de grade pode abrir um seletor nativo para edição;
 - `ChartBar`: barras horizontais ou verticais, com animação alinhada à orientação;
 - `ChartPoint`: marca circular independente para gráficos de pontos ou linhas;
 - `ChartSector`: setor SVG independente para gráficos circulares;
@@ -30,19 +32,63 @@ O índice `Frontend/src/components/index.ts` exporta:
 - `MetricCard`: apresentação compacta de indicadores;
 - `NavigationItem`: item padronizado de navegação lateral;
 - `Stepper`: indicação de progresso entre etapas.
-- `QuestionsGrid`: grade editável baseada no MUI X Data Grid para revisar o papel
-  das colunas importadas e o tipo estatístico das perguntas.
+- `QuestionsGrid`: grade editável própria para revisar as perguntas importadas,
+  seus tipos e suas categorias estatísticas.
+
+## Tags de dados
+
+A variante `chart` apresenta o valor como um marcador compacto de legenda. A
+variante `grid` ocupa a célula disponível e, quando recebe opções e um callback,
+usa um `select` nativo sobre toda a área clicável. As duas variantes aceitam as
+cores `red`, `orange`, `yellow`, `l-green`, `d-green`, `blue` e `muted`.
+
+Na configuração das perguntas, as cores representam os valores atuais:
+
+| Valor | Cor |
+| :--- | :--- |
+| Quantitativa | Vermelho |
+| Qualitativa | Verde claro |
+| Discreta | Laranja |
+| Contínua | Amarelo |
+| Nominal | Azul |
+| Ordinal | Verde escuro |
 
 ## Grades de dados
 
-O MUI X Data Grid é usado nas interfaces tabulares que precisam de recursos como
-edição, ordenação, filtragem, paginação e virtualização. O Tailwind CSS continua
-sendo a base visual geral da aplicação; o tema do Material UI apenas aproxima as
-grades dos mesmos tokens de cor, tipografia e borda.
+A `QuestionsGrid` implementa somente os recursos necessários à revisão das
+perguntas, sem depender de uma biblioteca de grade. Ela oferece edição por tags,
+ordenação crescente e decrescente por coluna, paginação opcional e estado vazio.
+A API também permite controlar a quantidade de itens por página, página inicial
+ou controlada, densidade, separadores verticais, linhas alternadas, destaque no
+hover, cabeçalho fixo ou oculto, alinhamento e largura de cada coluna, classes por
+célula e por linha, além de ordenação controlada ou interna. A navegação fica
+absoluta no canto inferior direito da própria grade, no formato `< 1/2 >`, sem
+fundo ou contorno. O conjunto tem baixa opacidade em repouso, enquanto os
+chevrons recebem destaque no hover e a opacidade também aumenta com hover ou
+foco.
 
 A primeira grade está na etapa `Configurar` da importação. Enquanto a API de
-importação não estiver integrada, ela recebe linhas mockadas com perguntas e
-metadados. As colunas `Classificação` e `Tipo da variável` podem ser editadas.
+importação não estiver integrada, ela recebe linhas mockadas. As colunas `Tipo` e
+`Categoria` podem ser editadas. Ao trocar o tipo, uma categoria incompatível é
+substituída pela primeira categoria válida do novo tipo.
+
+A busca da etapa usa um atraso de 300 ms, ignora diferenças de caixa e acentos e
+consulta código, pergunta, tipo e categoria. O botão de filtros permite combinar
+tipo e categoria com a busca textual.
+
+## Entrada de dados na importação
+
+A primeira etapa aceita a seleção local de arquivos `.csv`, `.xls` e `.xlsx` por
+clique ou arrastar e soltar. O arquivo escolhido permanece somente no estado do
+frontend até a integração da API. CSV usa o token roxo e arquivos Excel usam o
+tom semântico positivo. Durante o arraste de um arquivo sobre a página, o restante
+da interface escurece e a área de importação recebe brilho e destaque animados,
+respeitando a preferência de redução de movimento.
+
+O campo do Google Sheets mantém o link em estado controlado e possui um botão
+`Buscar`. O envio do formulário apenas evita a navegação do navegador; a futura
+chamada de validação deverá ser conectada nesse manipulador quando o endpoint
+estiver disponível.
 
 ## Variantes e composição de classes
 

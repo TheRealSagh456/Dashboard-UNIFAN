@@ -17,6 +17,11 @@
   --color-positive: #47705c;
   --color-warning: #a76b25;
   --color-negative: #9c4e43;
+  --color-green-300: #00d062;
+  --color-green-700: #009c4a;
+  --color-blue-400: #0021f3;
+  --color-yellow-400: #e9d700;
+  --color-purple-500: #7653b5;
   --font-sans: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
   --font-display: Georgia, "Times New Roman", serif;
   --shadow-soft: 0 20px 60px rgb(94 57 31 / 0.08);
@@ -93,6 +98,30 @@ a {
   }
 }
 
+@keyframes import-drop-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 4px rgb(197 110 50 / 0.12),
+      0 0 28px rgb(197 110 50 / 0.24);
+    transform: scale(1);
+  }
+  50% {
+    box-shadow: 0 0 0 7px rgb(197 110 50 / 0.16),
+      0 0 46px rgb(197 110 50 / 0.34);
+    transform: scale(1.008);
+  }
+}
+
+@keyframes import-content-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 0 rgb(197 110 50 / 0));
+  }
+  50% {
+    filter: drop-shadow(0 0 8px rgb(197 110 50 / 0.3));
+  }
+}
+
 .chart-bar-rise-vertical {
   transform-origin: center bottom;
   animation: chart-bar-rise-vertical 500ms ease-out both;
@@ -103,9 +132,19 @@ a {
   animation: chart-bar-rise-horizontal 500ms ease-out both;
 }
 
+.import-drop-active {
+  animation: import-drop-glow 1.4s ease-in-out infinite;
+}
+
+.import-drop-active .import-drop-content {
+  animation: import-content-glow 1.4s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .chart-bar-rise-horizontal,
   .chart-bar-rise-vertical,
+  .import-drop-active,
+  .import-drop-active .import-drop-content,
   .gallery-enter {
     animation: none;
   }

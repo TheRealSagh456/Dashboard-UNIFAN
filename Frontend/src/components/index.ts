@@ -7,7 +7,21 @@ export { Stepper } from "./navigation/stepper";
 export { Badge } from "./ui/badge";
 export { Button } from "./ui/button";
 export { Card } from "./ui/card";
+export { Tag } from "./ui/tag";
+export type { TagDotColor, TagOption, TagProps } from "./ui/tag";
 export { TextField } from "./ui/text-field";
 export { Text } from "./ui/typography";
 export { Tooltip } from "./ui/tooltip";
 export { QuestionsGrid } from "./ui/question-grid";
+export type {
+  CategoriaQualitativa,
+  CategoriaQuantitativa,
+  CategoriaVariavel,
+  PerguntaRow,
+  QuestionGridAlignment,
+  QuestionGridColumn,
+  QuestionGridSize,
+  QuestionGridSort,
+  QuestionsGridProps,
+  TipoVariavel,
+} from "./ui/question-grid";
