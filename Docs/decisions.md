@@ -76,14 +76,24 @@ realizada e suas consequências.
 
 ## DEC-007 - Grades tabulares do frontend
 
+- **Situação:** substituída pela DEC-008
+- **Decisão anterior:** utilizar a versão Community do MUI X Data Grid nas
+  interfaces tabulares de configuração e visualização de dados.
+- **Motivo da substituição:** a grade de configuração precisa de um conjunto
+  pequeno de comportamentos e de integração direta com os componentes visuais do
+  projeto. O MUI e o Emotion não chegaram a ser adicionados às dependências.
+
+## DEC-008 - Grade reutilizável de perguntas
+
 - **Situação:** aceita
-- **Decisão:** utilizar a versão Community do MUI X Data Grid nas interfaces
-  tabulares de configuração e visualização de dados.
-- **Motivo:** fornecer edição de células e linhas, filtros, ordenação, paginação e
-  virtualização sem implementar esses comportamentos manualmente.
-- **Consequências:** o Material UI e o Emotion são dependências do frontend; seu
-  tema deve acompanhar os tokens visuais existentes; o Tailwind CSS permanece
-  como base de estilização dos demais componentes e telas.
+- **Decisão:** manter uma `QuestionsGrid` própria, construída com React, Tailwind
+  CSS e componentes do design system.
+- **Motivo:** oferecer edição por tags, ordenação e personalização visual com uma
+  implementação pequena, compatível com o estilo do projeto e sem dependências
+  adicionais de grade.
+- **Consequências:** a grade expõe paginação, densidade, separadores,
+  alinhamentos, larguras, estilos de linha e ordenação controlada ou interna. A
+  virtualização só será incluída quando o volume real justificar.
 
 ## Decisões pendentes
 

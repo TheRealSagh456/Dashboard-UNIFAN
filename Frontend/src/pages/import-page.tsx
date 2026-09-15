@@ -1,18 +1,23 @@
 import {
-  CheckCircle2,
-  FileSpreadsheet,
   LucideArrowLeft,
   LucideArrowRight,
   LucideCheck,
   LucideCloudUpload,
+  LucideFileSpreadsheet,
+  LucideFileText,
   LucideFilter,
   LucideLink,
   LucideSearch,
   LucideUpload,
 } from "lucide-react";
-import GlobalStyles from "@mui/material/GlobalStyles";
-import { StyledEngineProvider, ThemeProvider } from "@mui/material/styles";
-import { useRef, useState, type DragEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+  type FormEvent,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Button,
@@ -22,328 +27,557 @@ import {
   Text,
   TextField,
 } from "../components";
-import type { PerguntaRow } from "../components/ui/question-grid";
-import { muiTheme } from "../lib/mui-theme";
+import type {
+  CategoriaVariavel,
+  PerguntaRow,
+  TipoVariavel,
+} from "../components/ui/question-grid";
+import { cn } from "../lib/cn";
 
 const perguntasMockadas: PerguntaRow[] = [
-  {
-    id: "meta-data-hora",
-    codigo: "META-01",
-    enunciado: "Data e hora de envio",
-    papel: "Metadado",
-    tipo: null,
-  },
-  {
-    id: "meta-identificador",
-    codigo: "META-02",
-    enunciado: "Identificador externo",
-    papel: "Metadado",
-    tipo: null,
-  },
-  {
-    id: "meta-email",
-    codigo: "META-03",
-    enunciado: "E-mail",
-    papel: "Metadado",
-    tipo: null,
-  },
   {
     id: "q01",
     codigo: "Q01",
     enunciado: "Qual é a sua idade?",
     papel: "Pergunta",
-    tipo: "Quantitativa discreta",
+    tipo: "Quantitativa",
+    categoria: "Discreta",
+  },
+  {
+    id: "q02",
+    codigo: "Q02",
+    enunciado: "Quantos dispositivos eletrônicos você possui?",
+    papel: "Pergunta",
+    tipo: "Quantitativa",
+    categoria: "Discreta",
   },
   {
     id: "q03",
     codigo: "Q03",
     enunciado: "Quantas horas por dia você usa a internet?",
     papel: "Pergunta",
-    tipo: "Quantitativa contínua",
+    tipo: "Quantitativa",
+    categoria: "Contínua",
+  },
+  {
+    id: "q04",
+    codigo: "Q04",
+    enunciado: "Quantas horas por dia você passa em redes sociais?",
+    papel: "Pergunta",
+    tipo: "Quantitativa",
+    categoria: "Contínua",
   },
   {
     id: "q11",
     codigo: "Q11",
     enunciado: "Qual é o seu gênero?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    categoria: "Nominal",
   },
   {
     id: "q12",
     codigo: "Q12",
     enunciado: "Qual é a sua escolaridade?",
     papel: "Pergunta",
-    tipo: "Qualitativa ordinal",
+    tipo: "Qualitativa",
+    categoria: "Ordinal",
   },
   {
     id: "q14",
     codigo: "Q14",
     enunciado: "Qual ferramenta de IA você mais utiliza?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    categoria: "Nominal",
   },
   {
     id: "q15",
     codigo: "Q15",
     enunciado: "Com que frequência você utiliza ferramentas de IA?",
     papel: "Pergunta",
-    tipo: "Qualitativa ordinal",
+    tipo: "Qualitativa",
+    categoria: "Ordinal",
   },
   {
     id: "q24",
     codigo: "Q24",
     enunciado: "Qual sistema operacional de celular você utiliza?",
     papel: "Pergunta",
-    tipo: "Qualitativa nominal",
+    tipo: "Qualitativa",
+    categoria: "Nominal",
   },
 ];
 
-const extensoesAceitas = [".csv", ".xls", ".xlsx"];
+const categoriasPorTipo: Record<TipoVariavel, CategoriaVariavel[]> = {
+  Quantitativa: ["Discreta", "Contínua"],
+  Qualitativa: ["Nominal", "Ordinal"],
+};
 
-function arquivoAceito(arquivo: File) {
-  const nome = arquivo.name.toLocaleLowerCase("pt-BR");
-  return extensoesAceitas.some((extensao) => nome.endsWith(extensao));
+const selectClassName =
+  "h-10 rounded-xl border border-line bg-paper px-3 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-3 focus:ring-brand-100";
+
+function normalizarBusca(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("pt-BR")
+    .trim();
 }
 
-function linkGoogleSheetsValido(valor: string) {
-  if (!valor.trim()) return false;
-  try {
-    const url = new URL(valor);
-    return (
-      url.protocol === "https:" &&
-      url.hostname === "docs.google.com" &&
-      url.pathname.startsWith("/spreadsheets/")
-    );
-  } catch {
-    return false;
-  }
+function obterExtensaoArquivo(file: File) {
+  return file.name.split(".").pop()?.toLocaleLowerCase("pt-BR") ?? "";
+}
+
+function formatarTamanhoArquivo(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export function ImportPage() {
   const [etapa, setEtapa] = useState(1);
-  const [arquivo, setArquivo] = useState<File | null>(null);
-  const [erroArquivo, setErroArquivo] = useState<string>();
-  const [linkPlanilha, setLinkPlanilha] = useState("");
+  const [perguntas, setPerguntas] = useState<PerguntaRow[]>(perguntasMockadas);
   const [busca, setBusca] = useState("");
-  const [somentePerguntas, setSomentePerguntas] = useState(false);
-  const [perguntas, setPerguntas] = useState(perguntasMockadas);
-  const inputArquivo = useRef<HTMLInputElement>(null);
+  const [buscaComDelay, setBuscaComDelay] = useState("");
+  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
+  const [filtroTipo, setFiltroTipo] = useState<TipoVariavel | "todos">("todos");
+  const [filtroCategoria, setFiltroCategoria] = useState<
+    CategoriaVariavel | "todas"
+  >("todas");
+  const [arquivoSelecionado, setArquivoSelecionado] = useState<File | null>(
+    null,
+  );
+  const [erroArquivo, setErroArquivo] = useState<string | null>(null);
+  const [arrastandoArquivo, setArrastandoArquivo] = useState(false);
+  const [linkPlanilha, setLinkPlanilha] = useState("");
+  const inputArquivoRef = useRef<HTMLInputElement>(null);
+  const contadorArrasteRef = useRef(0);
   const navigate = useNavigate();
 
-  const linkValido = linkGoogleSheetsValido(linkPlanilha);
-  const origemSelecionada = arquivo !== null || linkValido;
-  const quantidadePerguntas = perguntas.filter(
-    (pergunta) => pergunta.papel === "Pergunta",
-  ).length;
-  const quantidadeMetadados = perguntas.length - quantidadePerguntas;
+  useEffect(() => {
+    const timer = window.setTimeout(() => setBuscaComDelay(busca), 300);
+    return () => window.clearTimeout(timer);
+  }, [busca]);
 
-  function selecionarArquivo(novoArquivo?: File) {
-    if (!novoArquivo) return;
-    if (!arquivoAceito(novoArquivo)) {
-      setArquivo(null);
+  const categoriasDisponiveis =
+    filtroTipo === "todos"
+      ? (["Discreta", "Contínua", "Nominal", "Ordinal"] as const)
+      : categoriasPorTipo[filtroTipo];
+
+  const perguntasFiltradas = useMemo(() => {
+    const termo = normalizarBusca(buscaComDelay);
+
+    return perguntas.filter((item) => {
+      const correspondeAoTexto =
+        termo.length === 0 ||
+        normalizarBusca(
+          [item.codigo, item.enunciado, item.tipo, item.categoria]
+            .filter(Boolean)
+            .join(" "),
+        ).includes(termo);
+      const correspondeAoTipo =
+        filtroTipo === "todos" || item.tipo === filtroTipo;
+      const correspondeACategoria =
+        filtroCategoria === "todas" || item.categoria === filtroCategoria;
+
+      return correspondeAoTexto && correspondeAoTipo && correspondeACategoria;
+    });
+  }, [buscaComDelay, filtroCategoria, filtroTipo, perguntas]);
+
+  function atualizarPergunta(perguntaAtualizada: PerguntaRow) {
+    setPerguntas((items) =>
+      items.map((item) =>
+        item.id === perguntaAtualizada.id ? perguntaAtualizada : item,
+      ),
+    );
+  }
+
+  function alterarFiltroTipo(value: TipoVariavel | "todos") {
+    setFiltroTipo(value);
+    if (
+      value !== "todos" &&
+      filtroCategoria !== "todas" &&
+      !categoriasPorTipo[value].includes(filtroCategoria)
+    ) {
+      setFiltroCategoria("todas");
+    }
+  }
+
+  function selecionarArquivo(file: File | undefined) {
+    if (!file) return;
+
+    const extensao = obterExtensaoArquivo(file);
+    if (!["csv", "xls", "xlsx"].includes(extensao)) {
+      setArquivoSelecionado(null);
       setErroArquivo("Selecione um arquivo CSV, XLS ou XLSX.");
       return;
     }
-    setArquivo(novoArquivo);
-    setLinkPlanilha("");
-    setErroArquivo(undefined);
+
+    setArquivoSelecionado(file);
+    setErroArquivo(null);
   }
 
-  function receberArquivo(event: DragEvent<HTMLLabelElement>) {
+  function iniciarArraste(event: DragEvent<HTMLElement>) {
+    if (etapa !== 1 || !event.dataTransfer.types.includes("Files")) return;
     event.preventDefault();
+    contadorArrasteRef.current += 1;
+    setArrastandoArquivo(true);
+  }
+
+  function continuarArraste(event: DragEvent<HTMLElement>) {
+    if (etapa !== 1 || !event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    event.dataTransfer.dropEffect = "copy";
+  }
+
+  function encerrarArraste(event: DragEvent<HTMLElement>) {
+    if (etapa !== 1 || !event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    contadorArrasteRef.current = Math.max(0, contadorArrasteRef.current - 1);
+    if (contadorArrasteRef.current === 0) setArrastandoArquivo(false);
+  }
+
+  function soltarArquivo(event: DragEvent<HTMLElement>) {
+    if (etapa !== 1 || !event.dataTransfer.types.includes("Files")) return;
+    event.preventDefault();
+    contadorArrasteRef.current = 0;
+    setArrastandoArquivo(false);
     selecionarArquivo(event.dataTransfer.files[0]);
   }
 
+  function buscarPlanilha(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!linkPlanilha.trim()) return;
+    // A chamada da API será conectada aqui quando o endpoint estiver disponível.
+  }
+
+  const filtrosAtivos =
+    Number(filtroTipo !== "todos") + Number(filtroCategoria !== "todas");
+
   return (
-    <StyledEngineProvider enableCssLayer>
-      <GlobalStyles styles="@layer theme, base, mui, components, utilities;" />
-      <ThemeProvider theme={muiTheme}>
-        <main className="min-h-screen bg-canvas px-4 py-8 sm:px-6">
-          <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
+    <main
+      className="relative min-h-screen bg-canvas px-4 py-8 sm:px-6 lg:py-12"
+      onDragEnter={iniciarArraste}
+      onDragOver={continuarArraste}
+      onDragLeave={encerrarArraste}
+      onDrop={soltarArquivo}
+    >
+      <div
+        className={cn(
+          "pointer-events-none fixed inset-0 z-40 bg-ink/30 opacity-0 backdrop-blur-[1px] transition-opacity duration-200",
+          arrastandoArquivo && "opacity-100",
+        )}
+        aria-hidden
+      />
+      <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 lg:gap-10">
         <Stepper
           currentStep={etapa}
           steps={["Importar", "Configurar", "Finalizar"]}
-          className="mx-auto max-w-2xl"
+          className="mx-auto w-full max-w-3xl"
         />
 
-        {etapa === 2 && (
-          <section className="flex flex-col gap-4">
-            <div>
-              <Text variant="data">Configure suas perguntas</Text>
-              <Text variant="label" tone="muted" className="mt-2">
-                Revise a classificação das variáveis e edite as informações se
-                necessário.
-              </Text>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <TextField
-                aria-label="Buscar pergunta"
-                placeholder="Buscar pergunta..."
-                className="w-full"
-                leadingIcon={<LucideSearch className="size-5" />}
-                value={busca}
-                onChange={(event) => setBusca(event.target.value)}
-              />
-              <Button
-                variant={somentePerguntas ? "secondary" : "outline"}
-                size="icon"
-                aria-label="Mostrar somente perguntas"
-                aria-pressed={somentePerguntas}
-                title="Mostrar somente perguntas"
-                onClick={() => setSomentePerguntas((ativo) => !ativo)}
-              >
-                <LucideFilter className="size-5" aria-hidden="true" />
-              </Button>
-            </div>
-          </section>
-        )}
-
-        <Card className="flex w-full flex-col items-center gap-5">
-          {etapa === 1 && (
+        <section className="flex min-w-0 flex-col">
+          {etapa === 2 && (
             <>
-              <LucideUpload className="size-12 text-brand-600" aria-hidden="true" />
+              <div className="mb-5 flex flex-col gap-2">
+                <Text as="h1" variant="data">
+                  Configure suas perguntas
+                </Text>
+                <Text variant="label" tone="muted" className="max-w-2xl">
+                  Analise o tipo e a categoria das variáveis. Clique nas tags
+                  para editar as informações quando necessário.
+                </Text>
+              </div>
+
+              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-end">
+                <div className="w-full sm:max-w-md">
+                  <TextField
+                    aria-label="Buscar perguntas"
+                    placeholder="Buscar por código, pergunta, tipo ou categoria..."
+                    value={busca}
+                    onChange={(event) => setBusca(event.target.value)}
+                    leadingIcon={<LucideSearch className="size-4" />}
+                  />
+                </div>
+                <Button
+                  variant={filtrosAbertos ? "secondary" : "outline"}
+                  size="icon"
+                  aria-label="Exibir filtros"
+                  aria-controls="filtros-da-grid"
+                  aria-expanded={filtrosAbertos}
+                  aria-pressed={filtrosAbertos}
+                  onClick={() => setFiltrosAbertos((open) => !open)}
+                  className="relative shrink-0"
+                >
+                  <LucideFilter className="size-4" />
+                  {filtrosAtivos > 0 && (
+                    <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-brand-700 text-[0.6rem] font-bold text-paper">
+                      {filtrosAtivos}
+                    </span>
+                  )}
+                </Button>
+              </div>
+
+              {filtrosAbertos && (
+                <div
+                  id="filtros-da-grid"
+                  className="mb-4 flex flex-col gap-3 rounded-xl border border-line bg-surface/70 p-3 sm:flex-row sm:items-end"
+                >
+                  <label className="grid flex-1 gap-1.5 text-sm font-semibold text-ink">
+                    Tipo
+                    <select
+                      className={selectClassName}
+                      value={filtroTipo}
+                      onChange={(event) =>
+                        alterarFiltroTipo(
+                          event.target.value as TipoVariavel | "todos",
+                        )
+                      }
+                    >
+                      <option value="todos">Todos os tipos</option>
+                      <option value="Quantitativa">Quantitativa</option>
+                      <option value="Qualitativa">Qualitativa</option>
+                    </select>
+                  </label>
+                  <label className="grid flex-1 gap-1.5 text-sm font-semibold text-ink">
+                    Categoria
+                    <select
+                      className={selectClassName}
+                      value={filtroCategoria}
+                      onChange={(event) =>
+                        setFiltroCategoria(
+                          event.target.value as CategoriaVariavel | "todas",
+                        )
+                      }
+                    >
+                      <option value="todas">Todas as categorias</option>
+                      {categoriasDisponiveis.map((categoria) => (
+                        <option key={categoria} value={categoria}>
+                          {categoria}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={filtrosAtivos === 0}
+                    onClick={() => {
+                      setFiltroTipo("todos");
+                      setFiltroCategoria("todas");
+                    }}
+                  >
+                    Limpar filtros
+                  </Button>
+                </div>
+              )}
+
+              <Text variant="caption" tone="muted" className="mb-2">
+                {perguntasFiltradas.length} de {perguntas.length} perguntas
+              </Text>
+              <QuestionsGrid
+                rows={perguntasFiltradas}
+                onRowChange={atualizarPergunta}
+                defaultSort={{ column: "codigo", direction: "asc" }}
+                itemsPerPage={8}
+                size="default"
+                showCellSeparators
+                hoverHighlight
+                ariaLabel="Perguntas importadas"
+              />
+            </>
+          )}
+
+          {etapa === 1 && (
+            <Card className="mx-auto flex w-full max-w-3xl flex-col gap-6 overflow-visible p-6 sm:p-8">
               <div className="text-center">
-                <Text variant="h2">Adicionar formulário</Text>
-                <Text variant="label" tone="accent" className="mt-2">
-                  Faça o upload de um arquivo ou cole o link do Google Sheets.
+                <span className="mx-auto mb-4 grid size-14 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+                  <LucideUpload className="size-7" />
+                </span>
+                <Text as="h1" variant="h2">
+                  Adicionar formulário
+                </Text>
+                <Text
+                  variant="label"
+                  tone="muted"
+                  className="mx-auto mt-2 max-w-xl"
+                >
+                  Importe as respostas em CSV ou Excel, ou informe um link do
+                  Google Sheets.
                 </Text>
               </div>
 
               <input
-                ref={inputArquivo}
-                id="arquivo-pesquisa"
-                className="sr-only"
+                ref={inputArquivoRef}
                 type="file"
                 accept=".csv,.xls,.xlsx"
-                onChange={(event) => selecionarArquivo(event.target.files?.[0])}
+                className="hidden"
+                aria-label="Selecionar arquivo de respostas"
+                onChange={(event) => {
+                  selecionarArquivo(event.currentTarget.files?.[0]);
+                  event.currentTarget.value = "";
+                }}
               />
-              <label
-                htmlFor="arquivo-pesquisa"
-                className="flex w-full cursor-pointer flex-col items-center justify-center gap-5 rounded-2xl border border-line p-6 text-center transition hover:border-brand-200 hover:bg-brand-50 focus-within:ring-2 focus-within:ring-brand-500"
-                onDragOver={(event) => event.preventDefault()}
-                onDrop={receberArquivo}
-              >
-                {arquivo ? (
-                  <FileSpreadsheet className="size-10 text-positive" aria-hidden="true" />
-                ) : (
-                  <LucideCloudUpload className="size-10 text-brand-600" aria-hidden="true" />
+              <button
+                type="button"
+                className={cn(
+                  "relative flex min-h-56 w-full cursor-pointer flex-col items-center justify-center gap-4 rounded-2xl border border-dashed border-brand-200 bg-surface/45 p-6 text-center outline-none transition duration-200 hover:border-brand-500 hover:bg-brand-50/70 focus-visible:ring-3 focus-visible:ring-brand-200",
+                  arrastandoArquivo &&
+                    "import-drop-active z-50 border-brand-500 bg-paper",
                 )}
-                <div>
-                  <Text variant="label">
-                    {arquivo ? arquivo.name : "Arraste e solte seu arquivo aqui"}
-                  </Text>
-                  <Text tone="muted">
-                    {arquivo ? "Clique para trocar o arquivo" : "ou clique para selecionar"}
-                  </Text>
+                onClick={() => inputArquivoRef.current?.click()}
+              >
+                <span className="import-drop-content grid size-16 place-items-center rounded-2xl bg-brand-50 text-brand-600">
+                  {arquivoSelecionado ? (
+                    obterExtensaoArquivo(arquivoSelecionado) === "csv" ? (
+                      <LucideFileText className="size-8 text-purple-500" />
+                    ) : (
+                      <LucideFileSpreadsheet className="size-8 text-positive" />
+                    )
+                  ) : (
+                    <LucideCloudUpload className="size-8" />
+                  )}
+                </span>
+                <div className="import-drop-content min-w-0">
+                  {arquivoSelecionado ? (
+                    <>
+                      <Text
+                        as="span"
+                        variant="label"
+                        className={cn(
+                          "block max-w-lg truncate",
+                          obterExtensaoArquivo(arquivoSelecionado) === "csv"
+                            ? "text-purple-500"
+                            : "text-positive",
+                        )}
+                      >
+                        {arquivoSelecionado.name}
+                      </Text>
+                      <Text
+                        as="span"
+                        variant="caption"
+                        tone="muted"
+                        className="mt-1 block"
+                      >
+                        {formatarTamanhoArquivo(arquivoSelecionado.size)} ·
+                        Clique para substituir
+                      </Text>
+                    </>
+                  ) : (
+                    <>
+                      <Text as="span" variant="label" className="block">
+                        Arraste e solte seu arquivo aqui
+                      </Text>
+                      <Text as="span" tone="muted" className="mt-1 block">
+                        ou clique para selecionar
+                      </Text>
+                    </>
+                  )}
                 </div>
-              </label>
+                <div className="import-drop-content flex flex-wrap items-center justify-center gap-2">
+                  <span className="rounded-full bg-purple-500/10 px-2.5 py-1 text-xs font-bold text-purple-500">
+                    CSV
+                  </span>
+                  <span className="rounded-full bg-positive/10 px-2.5 py-1 text-xs font-bold text-positive">
+                    XLS
+                  </span>
+                  <span className="rounded-full bg-positive/10 px-2.5 py-1 text-xs font-bold text-positive">
+                    XLSX
+                  </span>
+                </div>
+              </button>
               {erroArquivo && (
                 <Text role="alert" variant="caption" tone="negative">
                   {erroArquivo}
                 </Text>
               )}
 
-              <Text variant="eyebrow" tone="accent">
-                Formatos aceitos: CSV, XLS e XLSX
-              </Text>
-
-              <div className="flex w-full flex-col gap-4 border-t border-line pt-5">
-                <Text variant="label" tone="accent" className="text-center">
-                  Ou cole o link do Google Sheets
+              <div className="flex items-center gap-3" aria-hidden>
+                <span className="h-px flex-1 bg-line" />
+                <Text as="span" variant="eyebrow" tone="muted">
+                  ou
                 </Text>
-                <TextField
-                  placeholder="https://docs.google.com/spreadsheets/d/..."
-                  leadingIcon={<LucideLink className="size-5" />}
-                  value={linkPlanilha}
-                  error={
-                    linkPlanilha && !linkValido
-                      ? "Informe um link válido do Google Sheets."
-                      : undefined
-                  }
-                  onChange={(event) => {
-                    setLinkPlanilha(event.target.value);
-                    if (event.target.value) {
-                      setArquivo(null);
-                      setErroArquivo(undefined);
-                      if (inputArquivo.current) inputArquivo.current.value = "";
-                    }
-                  }}
-                />
+                <span className="h-px flex-1 bg-line" />
               </div>
-            </>
-          )}
 
-          {etapa === 2 && (
-            <QuestionsGrid
-              perguntas={perguntas}
-              onPerguntasChange={setPerguntas}
-              busca={busca}
-              somentePerguntas={somentePerguntas}
-            />
+              <form className="grid gap-2" onSubmit={buscarPlanilha}>
+                <label
+                  htmlFor="link-google-sheets"
+                  className="text-sm font-semibold leading-5 text-ink"
+                >
+                  Link do Google Sheets
+                </label>
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
+                  <TextField
+                    id="link-google-sheets"
+                    placeholder="https://docs.google.com/spreadsheets/d/..."
+                    value={linkPlanilha}
+                    onChange={(event) => setLinkPlanilha(event.target.value)}
+                    className="h-13 text-base"
+                    leadingIcon={<LucideLink className="size-5" />}
+                  />
+                  <Button
+                    type="submit"
+                    className="h-13 px-5"
+                    disabled={!linkPlanilha.trim()}
+                  >
+                    Buscar
+                  </Button>
+                </div>
+                <Text variant="caption" tone="muted">
+                  A verificação do link será conectada em uma próxima etapa.
+                </Text>
+              </form>
+            </Card>
           )}
 
           {etapa === 3 && (
-            <section className="flex w-full max-w-2xl flex-col items-center gap-5 py-6 text-center">
-              <CheckCircle2 className="size-12 text-positive" aria-hidden="true" />
-              <div>
-                <Text variant="h2">Revisão concluída</Text>
-                <Text tone="muted" className="mt-2">
-                  Confira o resumo antes de finalizar a configuração da importação.
-                </Text>
-              </div>
-              <dl className="grid w-full gap-3 rounded-xl bg-surface p-5 text-left sm:grid-cols-3">
-                <div>
-                  <Text as="dt" variant="caption" tone="muted">Origem</Text>
-                  <Text as="dd" variant="label" className="mt-1 break-words">
-                    {arquivo?.name ?? "Google Sheets"}
-                  </Text>
-                </div>
-                <div>
-                  <Text as="dt" variant="caption" tone="muted">Perguntas</Text>
-                  <Text as="dd" variant="data" className="mt-1">{quantidadePerguntas}</Text>
-                </div>
-                <div>
-                  <Text as="dt" variant="caption" tone="muted">Metadados</Text>
-                  <Text as="dd" variant="data" className="mt-1">{quantidadeMetadados}</Text>
-                </div>
-              </dl>
-              <Text variant="caption" tone="muted">
-                Nesta etapa de frontend, os dados continuam mockados até a integração
-                com a API de importação.
+            <Card className="mx-auto w-full max-w-3xl text-center">
+              <LucideCheck className="mx-auto mb-3 size-9 text-positive" />
+              <Text as="h1" variant="h2">
+                Configuração concluída
               </Text>
-            </section>
+              <Text tone="muted" className="mt-2">
+                As perguntas estão prontas para a próxima etapa da importação.
+              </Text>
+            </Card>
           )}
-        </Card>
 
-        <div className="flex items-center justify-between">
-          <Button
-            variant="ghost"
-            onClick={() => {
-              if (etapa > 1) setEtapa((atual) => atual - 1);
-              else navigate("/");
-            }}
-          >
-            <LucideArrowLeft aria-hidden="true" />
-            Voltar
-          </Button>
-          <Button
-            disabled={etapa === 1 && !origemSelecionada}
-            onClick={() => {
-              if (etapa < 3) setEtapa((atual) => atual + 1);
-              else navigate("/");
-            }}
-          >
-            {etapa === 3 ? "Finalizar" : "Continuar"}
-            {etapa < 3 ? (
-              <LucideArrowRight aria-hidden="true" />
-            ) : (
-              <LucideCheck aria-hidden="true" />
+          <div
+            className={cn(
+              "flex items-center justify-between gap-3 pt-6",
+              etapa === 2 && "pt-5",
+              etapa === 1 && "mx-auto w-full max-w-3xl",
+              etapa === 3 && "mx-auto w-full max-w-3xl justify-center",
             )}
-          </Button>
-        </div>
+          >
+            <Button
+              variant="ghost"
+              onClick={() => {
+                if (etapa > 1) setEtapa((current) => current - 1);
+                else navigate("/");
+              }}
+            >
+              <LucideArrowLeft className="size-4" />
+              Voltar
+            </Button>
+            <Button
+              onClick={() => {
+                if (etapa < 3) setEtapa((current) => current + 1);
+                if (etapa === 3) navigate("/");
+              }}
+            >
+              {etapa === 3 ? "Finalizar" : "Continuar"}
+              {etapa < 3 ? (
+                <LucideArrowRight className="size-4" />
+              ) : (
+                <LucideCheck className="size-4" />
+              )}
+            </Button>
           </div>
-        </main>
-      </ThemeProvider>
-    </StyledEngineProvider>
+        </section>
+      </div>
+    </main>
   );
 }
