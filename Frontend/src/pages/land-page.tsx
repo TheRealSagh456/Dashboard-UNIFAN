@@ -1,17 +1,18 @@
 import { lazy, Suspense } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { motion } from "motion/react";
-import { Button, Text } from "../components";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/ui/button";
+import { Text } from "../components/ui/typography";
 
 const HeroScene = lazy(() =>
-  import("../feats/land/hero-scene").then((module) => ({
+  import("../feats/home/hero-scene").then((module) => ({
     default: module.HeroScene,
   })),
 );
 
-export function LandPage() {
-  const navigation = useNavigate();
+export function HomePage() {
+  const navigate = useNavigate();
 
   return (
     <main className="relative isolate min-h-screen overflow-hidden bg-paper">
@@ -52,7 +53,7 @@ export function LandPage() {
               whileTap={{ scale: 0.97 }}
               transition={{ type: "spring", stiffness: 600, damping: 40 }}
             >
-              <Button size="lg" onClick={() => navigation("/Import")}>
+              <Button size="lg" onClick={() => navigate("/import")}>
                 Importar pesquisa
                 <ArrowUpRight className="size-4" aria-hidden="true" />
               </Button>

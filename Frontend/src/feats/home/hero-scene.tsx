@@ -39,10 +39,12 @@ function createParticleMask() {
 
 function createParticleGeometry(compact: boolean) {
   const { width, depth } = WAVE_SETTINGS;
-  const segments = compact
-    ? WAVE_SETTINGS.compactParticleSegments
-    : WAVE_SETTINGS.particleSegments;
-  const geometry = new PlaneGeometry(width, depth, ...segments);
+  const segments = compact ? WAVE_SETTINGS.compactParticleSegments : WAVE_SETTINGS.particleSegments;
+  const geometry = new PlaneGeometry(
+    width,
+    depth,
+    ...segments,
+  );
   geometry.translate(0, 2, 0);
   const positions = geometry.attributes.position;
   const colors = new Float32Array(positions.count * 3);
@@ -76,9 +78,7 @@ function createParticleGeometry(compact: boolean) {
 }
 
 function createSurfaceGeometry(compact: boolean) {
-  const segments = compact
-    ? WAVE_SETTINGS.compactSurfaceSegments
-    : WAVE_SETTINGS.surfaceSegments;
+  const segments = compact ? WAVE_SETTINGS.compactSurfaceSegments : WAVE_SETTINGS.surfaceSegments;
   const geometry = new PlaneGeometry(
     WAVE_SETTINGS.width,
     WAVE_SETTINGS.depth,
@@ -162,11 +162,7 @@ function LearningPlane({
     resuming.current = false;
     uniforms.uWaveTime.value += step;
     // Só quatro impulsos: sem percorrer a malha nem atualizar estado React.
-    updateRipples(
-      surface.material.userData.rippleStarts,
-      uniforms.uRipples.value,
-      uniforms.uWaveTime.value,
-    );
+    updateRipples(surface.material.userData.rippleStarts, uniforms.uRipples.value, uniforms.uWaveTime.value);
   });
 
   return (
@@ -177,20 +173,13 @@ function LearningPlane({
         material={materials.surface}
         raycast={raycast}
         onClick={(event) => {
-          if (reducedMotion || paused || event.button !== 0 || event.delta > 5)
-            return;
+          if (reducedMotion || paused || event.button !== 0 || event.delta > 5) return;
           const surface = surfaceRef.current;
           if (!surface || Array.isArray(surface.material)) return;
-          const uniforms = surface.material.userData
-            .waveUniforms as WaveUniforms;
+          const uniforms = surface.material.userData.waveUniforms as WaveUniforms;
           event.object.worldToLocal(localHit.current.copy(event.point));
-          startRipple(
-            surface.material.userData.rippleStarts,
-            uniforms.uRipples.value,
-            localHit.current.x,
-            localHit.current.y,
-            uniforms.uWaveTime.value,
-          );
+          startRipple(surface.material.userData.rippleStarts, uniforms.uRipples.value,
+            localHit.current.x, localHit.current.y, uniforms.uWaveTime.value);
         }}
       />
 
@@ -235,7 +224,7 @@ export function HeroScene() {
       aria-hidden="true"
     >
       <Canvas
-        camera={{ position: [4, 3.3, 8.8], fov: 30, near: 0.1, far: 65 }}
+        camera={{ position: [0, 3.3, 8.8], fov: 43, near: 0.1, far: 65 }}
         frameloop={reducedMotion || paused ? "demand" : "always"}
         dpr={1}
         gl={{ antialias: true }}
