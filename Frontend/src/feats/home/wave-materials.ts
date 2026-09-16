@@ -3,6 +3,7 @@ import {
   FrontSide,
   MeshPhysicalMaterial,
   PointsMaterial,
+  Vector2,
   Vector4,
 } from "three";
 import type { Material, Texture } from "three";
@@ -16,6 +17,8 @@ export function createWaveUniforms() {
     uGlowColor: { value: new Color(RIPPLE_SETTINGS.color) },
     uGlowIntensity: { value: RIPPLE_SETTINGS.intensity },
     uRipples: { value: Array.from({ length: RIPPLE_SETTINGS.capacity }, () => new Vector4(0, 0, 0, 0)) },
+    uRippleBounces: { value: Array.from({ length: RIPPLE_SETTINGS.capacity }, () => new Vector4(0, 0, 0, 0)) },
+    uBounceDirections: { value: Array.from({ length: RIPPLE_SETTINGS.capacity }, () => new Vector2(0, 0)) },
   };
 }
 
@@ -61,6 +64,8 @@ export const glowRingFunction = /* glsl */ `
 const glowFragmentFunctions = /* glsl */ `
   varying vec2 vWavePosition;
   uniform vec4 uRipples[${RIPPLE_SETTINGS.capacity}];
+  uniform vec4 uRippleBounces[${RIPPLE_SETTINGS.capacity}];
+  uniform vec2 uBounceDirections[${RIPPLE_SETTINGS.capacity}];
   uniform vec3 uGlowColor;
   uniform float uGlowIntensity;
   ${glowRingFunction}
@@ -74,8 +79,24 @@ const glowFragmentFunctions = /* glsl */ `
       if (ripple.w > 0.0) {
         glow += glowRingAt(distance(p, ripple.xy), ripple.z, ripple.w, pixelWidth);
       }
+
+      vec4 bounce = uRippleBounces[i];
+      if (bounce.w > 0.0) {
+        vec2 delta = p - bounce.xy;
+        float radialDistance = length(delta);
+        vec2 heading = delta / max(radialDistance, 0.001);
+        float alignment = dot(heading, uBounceDirections[i]);
+        float directionalMask = smoothstep(-0.2, 0.72, alignment);
+        float reflectedRing = glowRingAt(
+          radialDistance,
+          bounce.z,
+          bounce.w,
+          pixelWidth
+        );
+        glow += reflectedRing * directionalMask * (0.82 + max(alignment, 0.0) * 0.38);
+      }
     }
-    // Sobreposições iluminam mais, mas não estouram a tela com quatro cliques.
+    // Sobreposições iluminam mais, sem estourar a tela com vários cliques.
     return min(glow, 1.7);
   }
 `;
@@ -131,7 +152,7 @@ function addWaveDeformation(
   };
 
   material.customProgramCacheKey = () =>
-    `wave-glow-v3-${surface}-${waveVertexFunctions}-${glowFragmentFunctions}`;
+    `wave-glow-v4-${surface}-${waveVertexFunctions}-${glowFragmentFunctions}`;
 }
 
 export function createWaveMaterials(mask: Texture, compact: boolean) {
@@ -164,6 +185,5 @@ export function createWaveMaterials(mask: Texture, compact: boolean) {
   addWaveDeformation(surface, uniforms, true);
   addWaveDeformation(particles, uniforms, false);
   surface.userData.waveUniforms = uniforms;
-  surface.userData.rippleStarts = new Float64Array(RIPPLE_SETTINGS.capacity).fill(-Infinity);
   return { surface, particles, uniforms };
 }

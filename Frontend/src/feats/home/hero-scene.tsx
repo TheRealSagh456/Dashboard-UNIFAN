@@ -2,11 +2,15 @@ import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import { useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  AdditiveBlending,
   BufferGeometry,
+  Color,
   DataTexture,
+  DynamicDrawUsage,
   Float32BufferAttribute,
   LinearFilter,
   PlaneGeometry,
+  ShaderMaterial,
   Vector3,
   Mesh,
 } from "three";
@@ -14,7 +18,17 @@ import { WAVE_SETTINGS } from "./wave-field";
 import { createWaveMaterials } from "./wave-materials";
 import type { WaveUniforms } from "./wave-materials";
 import { createWaveRaycast } from "./wave-raycast";
-import { startRipple, updateRipples } from "./ripple-field";
+import {
+  clearRippleState,
+  clearSparkState,
+  createRippleState,
+  createSparkState,
+  SPARK_SETTINGS,
+  startRipple,
+  startSparkBurst,
+  updateRipples,
+  updateSparkBuffers,
+} from "./ripple-field";
 
 const BACKGROUND = "#fae8d5";
 
@@ -39,12 +53,10 @@ function createParticleMask() {
 
 function createParticleGeometry(compact: boolean) {
   const { width, depth } = WAVE_SETTINGS;
-  const segments = compact ? WAVE_SETTINGS.compactParticleSegments : WAVE_SETTINGS.particleSegments;
-  const geometry = new PlaneGeometry(
-    width,
-    depth,
-    ...segments,
-  );
+  const segments = compact
+    ? WAVE_SETTINGS.compactParticleSegments
+    : WAVE_SETTINGS.particleSegments;
+  const geometry = new PlaneGeometry(width, depth, ...segments);
   geometry.translate(0, 2, 0);
   const positions = geometry.attributes.position;
   const colors = new Float32Array(positions.count * 3);
@@ -78,7 +90,9 @@ function createParticleGeometry(compact: boolean) {
 }
 
 function createSurfaceGeometry(compact: boolean) {
-  const segments = compact ? WAVE_SETTINGS.compactSurfaceSegments : WAVE_SETTINGS.surfaceSegments;
+  const segments = compact
+    ? WAVE_SETTINGS.compactSurfaceSegments
+    : WAVE_SETTINGS.surfaceSegments;
   const geometry = new PlaneGeometry(
     WAVE_SETTINGS.width,
     WAVE_SETTINGS.depth,
@@ -88,6 +102,63 @@ function createSurfaceGeometry(compact: boolean) {
   geometry.computeBoundingSphere();
   if (geometry.boundingSphere) geometry.boundingSphere.radius += 8;
   return geometry;
+}
+
+function createSparkGeometry() {
+  const count =
+    SPARK_SETTINGS.burstCapacity * SPARK_SETTINGS.particlesPerBurst;
+  const geometry = new BufferGeometry();
+  const positions = new Float32BufferAttribute(new Float32Array(count * 3), 3);
+  const alphas = new Float32BufferAttribute(new Float32Array(count), 1);
+  const sizes = new Float32BufferAttribute(new Float32Array(count), 1);
+  positions.setUsage(DynamicDrawUsage);
+  alphas.setUsage(DynamicDrawUsage);
+
+  for (let index = 0; index < count; index += 1) {
+    const variation = Math.sin(index * 73.17 + 19.41) * 43758.5453;
+    sizes.setX(index, 3.2 + (variation - Math.floor(variation)) * 3.6);
+  }
+
+  geometry.setAttribute("position", positions);
+  geometry.setAttribute("aAlpha", alphas);
+  geometry.setAttribute("aSize", sizes);
+  return geometry;
+}
+
+function createSparkMaterial() {
+  return new ShaderMaterial({
+    uniforms: {
+      uSparkColor: { value: new Color(SPARK_SETTINGS.color) },
+    },
+    vertexShader: /* glsl */ `
+      attribute float aAlpha;
+      attribute float aSize;
+      varying float vAlpha;
+
+      void main() {
+        vAlpha = aAlpha;
+        vec4 viewPosition = modelViewMatrix * vec4(position, 1.0);
+        gl_Position = projectionMatrix * viewPosition;
+        gl_PointSize = aSize * clamp(7.0 / max(-viewPosition.z, 1.0), 0.72, 1.45);
+      }
+    `,
+    fragmentShader: /* glsl */ `
+      uniform vec3 uSparkColor;
+      varying float vAlpha;
+
+      void main() {
+        float distanceToCenter = distance(gl_PointCoord, vec2(0.5));
+        float softEdge = 1.0 - smoothstep(0.12, 0.5, distanceToCenter);
+        float hotCore = 1.0 - smoothstep(0.0, 0.2, distanceToCenter);
+        vec3 color = mix(uSparkColor, vec3(1.0), hotCore * 0.75);
+        gl_FragColor = vec4(color, softEdge * vAlpha);
+      }
+    `,
+    transparent: true,
+    depthWrite: false,
+    blending: AdditiveBlending,
+    toneMapped: false,
+  });
 }
 
 function CameraRig() {
@@ -118,6 +189,8 @@ function LearningPlane({
     [compact],
   );
   const particleMask = useMemo(() => createParticleMask(), []);
+  const sparkGeometry = useMemo(() => createSparkGeometry(), []);
+  const sparkMaterial = useMemo(() => createSparkMaterial(), []);
   const materials = useMemo(
     () => createWaveMaterials(particleMask, compact),
     [particleMask, compact],
@@ -128,6 +201,8 @@ function LearningPlane({
   );
   const surfaceRef = useRef<Mesh<PlaneGeometry>>(null);
   const localHit = useRef(new Vector3());
+  const rippleState = useMemo(() => createRippleState(), []);
+  const sparkState = useMemo(() => createSparkState(), []);
 
   const resuming = useRef(true);
 
@@ -137,6 +212,8 @@ function LearningPlane({
 
   useEffect(() => () => geometry.dispose(), [geometry]);
   useEffect(() => () => particleGeometry.dispose(), [particleGeometry]);
+  useEffect(() => () => sparkGeometry.dispose(), [sparkGeometry]);
+  useEffect(() => () => sparkMaterial.dispose(), [sparkMaterial]);
   useEffect(() => () => particleMask.dispose(), [particleMask]);
   useEffect(
     () => () => {
@@ -152,7 +229,14 @@ function LearningPlane({
     const uniforms = surface.material.userData.waveUniforms as WaveUniforms;
     if (reducedMotion) {
       for (const ripple of uniforms.uRipples.value) ripple.w = 0;
-      (surface.material.userData.rippleStarts as Float64Array).fill(-Infinity);
+      for (const bounce of uniforms.uRippleBounces.value) bounce.w = 0;
+      clearRippleState(rippleState);
+      clearSparkState(sparkState);
+      const alphas = sparkGeometry.getAttribute(
+        "aAlpha",
+      ) as Float32BufferAttribute;
+      (alphas.array as Float32Array).fill(0);
+      alphas.needsUpdate = true;
       return;
     }
     if (paused) return;
@@ -161,8 +245,30 @@ function LearningPlane({
     const step = resuming.current ? 0 : delta;
     resuming.current = false;
     uniforms.uWaveTime.value += step;
-    // Só quatro impulsos: sem percorrer a malha nem atualizar estado React.
-    updateRipples(surface.material.userData.rippleStarts, uniforms.uRipples.value, uniforms.uWaveTime.value);
+    // Conjunto fixo de impulsos: sem percorrer a malha nem atualizar estado React.
+    updateRipples(
+      rippleState,
+      uniforms.uRipples.value,
+      uniforms.uRippleBounces.value,
+      uniforms.uBounceDirections.value,
+      uniforms.uWaveTime.value,
+      (collision) => startSparkBurst(sparkState, collision),
+    );
+    const positions = sparkGeometry.getAttribute(
+      "position",
+    ) as Float32BufferAttribute;
+    const alphas = sparkGeometry.getAttribute(
+      "aAlpha",
+    ) as Float32BufferAttribute;
+    updateSparkBuffers(
+      sparkState,
+      positions.array as Float32Array,
+      alphas.array as Float32Array,
+      uniforms.uWaveTime.value,
+      uniforms.uWaveTime.value,
+    );
+    positions.needsUpdate = true;
+    alphas.needsUpdate = true;
   });
 
   return (
@@ -173,13 +279,20 @@ function LearningPlane({
         material={materials.surface}
         raycast={raycast}
         onClick={(event) => {
-          if (reducedMotion || paused || event.button !== 0 || event.delta > 5) return;
+          if (reducedMotion || paused || event.button !== 0 || event.delta > 5)
+            return;
           const surface = surfaceRef.current;
           if (!surface || Array.isArray(surface.material)) return;
-          const uniforms = surface.material.userData.waveUniforms as WaveUniforms;
+          const uniforms = surface.material.userData
+            .waveUniforms as WaveUniforms;
           event.object.worldToLocal(localHit.current.copy(event.point));
-          startRipple(surface.material.userData.rippleStarts, uniforms.uRipples.value,
-            localHit.current.x, localHit.current.y, uniforms.uWaveTime.value);
+          startRipple(
+            rippleState,
+            uniforms.uRipples.value,
+            localHit.current.x,
+            localHit.current.y,
+            uniforms.uWaveTime.value,
+          );
         }}
       />
 
@@ -187,6 +300,13 @@ function LearningPlane({
         geometry={particleGeometry}
         material={materials.particles}
         position={[0, 0, 0.025]}
+        raycast={() => {}}
+      />
+
+      <points
+        geometry={sparkGeometry}
+        material={sparkMaterial}
+        frustumCulled={false}
         raycast={() => {}}
       />
     </group>
@@ -224,7 +344,7 @@ export function HeroScene() {
       aria-hidden="true"
     >
       <Canvas
-        camera={{ position: [0, 3.3, 8.8], fov: 43, near: 0.1, far: 65 }}
+        camera={{ position: [0, 3.8, 8.8], fov: 38, near: 0.1, far: 65 }}
         frameloop={reducedMotion || paused ? "demand" : "always"}
         dpr={1}
         gl={{ antialias: true }}

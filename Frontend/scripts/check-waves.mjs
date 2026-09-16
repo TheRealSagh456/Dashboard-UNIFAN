@@ -49,10 +49,17 @@ const {
 const { createWaveRaycast } = await import(moduleUrl("wave-raycast"));
 const {
   RIPPLE_SETTINGS,
+  RIPPLE_KIND,
+  SPARK_SETTINGS,
+  bounceStrength,
+  createRippleState,
+  createSparkState,
   rippleStrength,
   sampleGlowRing,
   startRipple,
+  startSparkBurst,
   updateRipples,
+  updateSparkBuffers,
 } = await import(moduleUrl("ripple-field"));
 
 const scalarShader = waveVertexFunctions
@@ -72,8 +79,10 @@ const shaderEvaluator = new Function(
 
 const uniforms = createWaveUniforms();
 assert.deepEqual(Object.keys(uniforms).sort(), [
+  "uBounceDirections",
   "uGlowColor",
   "uGlowIntensity",
+  "uRippleBounces",
   "uRipples",
   "uWaveTime",
 ]);
@@ -100,23 +109,46 @@ for (const time of [0, 10, 30, 60]) {
   }
 }
 
-const starts = new Float64Array(RIPPLE_SETTINGS.capacity).fill(-Infinity);
+const rippleState = createRippleState();
 const vectorIdentities = [...uniforms.uRipples.value];
+const bounceIdentities = [...uniforms.uRippleBounces.value];
 for (let index = 0; index < RIPPLE_SETTINGS.capacity; index += 1) {
-  assert.ok(startRipple(starts, uniforms.uRipples.value, index - 1, index * 0.5, 0));
+  assert.ok(
+    startRipple(rippleState, uniforms.uRipples.value, 0, 0, 0),
+  );
 }
-assert.equal(startRipple(starts, uniforms.uRipples.value, 100, 100, 0.1), false);
-updateRipples(starts, uniforms.uRipples.value, 0.6);
+assert.equal(
+  startRipple(rippleState, uniforms.uRipples.value, 100, 100, 0.1),
+  false,
+);
+updateRipples(
+  rippleState,
+  uniforms.uRipples.value,
+  uniforms.uRippleBounces.value,
+  uniforms.uBounceDirections.value,
+  0.6,
+);
 assert.ok(
   uniforms.uRipples.value.every(
     (ripple, index) => ripple === vectorIdentities[index] && ripple.w > 0,
   ),
 );
-updateRipples(starts, uniforms.uRipples.value, RIPPLE_SETTINGS.duration);
+assert.ok(
+  uniforms.uRippleBounces.value.every(
+    (bounce, index) => bounce === bounceIdentities[index] && bounce.w === 0,
+  ),
+);
+updateRipples(
+  rippleState,
+  uniforms.uRipples.value,
+  uniforms.uRippleBounces.value,
+  uniforms.uBounceDirections.value,
+  RIPPLE_SETTINGS.duration,
+);
 assert.ok(uniforms.uRipples.value.every((ripple) => ripple.w === 0));
 assert.ok(
   startRipple(
-    starts,
+    rippleState,
     uniforms.uRipples.value,
     -2,
     1,
@@ -127,6 +159,96 @@ assert.ok(
 assert.equal(rippleStrength(0), 0);
 assert.equal(rippleStrength(RIPPLE_SETTINGS.duration), 0);
 assert.ok(rippleStrength(0.5) > rippleStrength(2));
+assert.equal(bounceStrength(RIPPLE_SETTINGS.bounceDuration), 0);
+assert.ok(bounceStrength(0.2) > 0);
+
+const collisionState = createRippleState();
+const collisionUniforms = createWaveUniforms();
+assert.ok(startRipple(collisionState, collisionUniforms.uRipples.value, -3, 0, 0));
+assert.ok(startRipple(collisionState, collisionUniforms.uRipples.value, 3, 0, 0));
+const collisions = [];
+updateRipples(
+  collisionState,
+  collisionUniforms.uRipples.value,
+  collisionUniforms.uRippleBounces.value,
+  collisionUniforms.uBounceDirections.value,
+  0.99,
+  (collision) => collisions.push(collision),
+);
+assert.equal(collisions.length, 0);
+updateRipples(
+  collisionState,
+  collisionUniforms.uRipples.value,
+  collisionUniforms.uRippleBounces.value,
+  collisionUniforms.uBounceDirections.value,
+  1.1,
+  (collision) => collisions.push(collision),
+);
+assert.equal(collisions.length, 1);
+assert.ok(Math.abs(collisions[0].x) < 1e-12);
+assert.ok(Math.abs(collisions[0].y) < 1e-12);
+assert.equal(collisions[0].time, 1);
+assert.equal(collisionUniforms.uRipples.value[0].w, 0);
+assert.equal(collisionUniforms.uRipples.value[1].w, 0);
+assert.ok(collisionUniforms.uRippleBounces.value[0].w > 0);
+assert.ok(collisionUniforms.uRippleBounces.value[1].w > 0);
+assert.equal(collisionUniforms.uBounceDirections.value[0].x, -1);
+assert.equal(collisionUniforms.uBounceDirections.value[1].x, 1);
+assert.ok(
+  Math.abs(
+    collisionUniforms.uRippleBounces.value[0].z -
+      RIPPLE_SETTINGS.bounceSpeed * 0.1,
+  ) < 1e-12,
+);
+updateRipples(
+  collisionState,
+  collisionUniforms.uRipples.value,
+  collisionUniforms.uRippleBounces.value,
+  collisionUniforms.uBounceDirections.value,
+  1.2,
+  (collision) => collisions.push(collision),
+);
+assert.equal(collisions.length, 1);
+
+// Uma rebatida para a direita encontra uma terceira coroa criada depois.
+assert.ok(
+  startRipple(
+    collisionState,
+    collisionUniforms.uRipples.value,
+    3,
+    0,
+    1.2,
+  ),
+);
+updateRipples(
+  collisionState,
+  collisionUniforms.uRipples.value,
+  collisionUniforms.uRippleBounces.value,
+  collisionUniforms.uBounceDirections.value,
+  1.6,
+  (collision) => collisions.push(collision),
+);
+assert.equal(collisions.length, 2);
+assert.ok(collisions[1].x > 1.8 && collisions[1].x < 2.1);
+assert.ok(Math.abs(collisions[1].y) < 0.02);
+assert.equal(collisionState.kinds[1], RIPPLE_KIND.directional);
+assert.equal(collisionState.kinds[2], RIPPLE_KIND.directional);
+assert.equal(collisionUniforms.uBounceDirections.value[1].x, -1);
+assert.equal(collisionUniforms.uBounceDirections.value[2].x, 1);
+assert.ok(collisionUniforms.uRippleBounces.value[1].w > 0);
+assert.ok(collisionUniforms.uRippleBounces.value[2].w > 0);
+
+const sparkState = createSparkState();
+for (const collision of collisions) startSparkBurst(sparkState, collision);
+const sparkCount =
+  SPARK_SETTINGS.burstCapacity * SPARK_SETTINGS.particlesPerBurst;
+const sparkPositions = new Float32Array(sparkCount * 3);
+const sparkAlphas = new Float32Array(sparkCount);
+updateSparkBuffers(sparkState, sparkPositions, sparkAlphas, 1.7, 1.7);
+assert.ok(sparkAlphas.some((alpha) => alpha > 0));
+assert.ok(sparkPositions.every(Number.isFinite));
+updateSparkBuffers(sparkState, sparkPositions, sparkAlphas, 3, 3);
+assert.ok(sparkAlphas.every((alpha) => alpha === 0));
 
 let glowSamples = 0;
 for (const age of [0.05, 0.2, 0.6, 1.3, 3, 4.79]) {
@@ -149,9 +271,18 @@ for (const age of [0.05, 0.2, 0.6, 1.3, 3, 4.79]) {
 }
 
 for (const fps of [15, 30, 60]) {
-  starts.fill(0);
+  const frameState = createRippleState();
+  for (let index = 0; index < RIPPLE_SETTINGS.capacity; index += 1) {
+    startRipple(frameState, uniforms.uRipples.value, 0, 0, 0);
+  }
   for (let frame = 0; frame <= fps; frame += 1) {
-    updateRipples(starts, uniforms.uRipples.value, frame / fps);
+    updateRipples(
+      frameState,
+      uniforms.uRipples.value,
+      uniforms.uRippleBounces.value,
+      uniforms.uBounceDirections.value,
+      frame / fps,
+    );
   }
   assert.equal(uniforms.uRipples.value[0].z, RIPPLE_SETTINGS.speed);
   assert.equal(uniforms.uRipples.value[0].w, rippleStrength(1));
@@ -187,8 +318,17 @@ for (const [material, shaderSource] of [
   material.onBeforeCompile(shader);
   assert.ok(shader.vertexShader.includes("waveHeightAt(position.xy)"));
   assert.ok(shader.fragmentShader.includes("glowRingAt"));
+  assert.ok(shader.fragmentShader.includes("directionalMask"));
   assert.equal(shader.uniforms.uWaveTime, materials.uniforms.uWaveTime);
   assert.equal(shader.uniforms.uRipples, materials.uniforms.uRipples);
+  assert.equal(
+    shader.uniforms.uRippleBounces,
+    materials.uniforms.uRippleBounces,
+  );
+  assert.equal(
+    shader.uniforms.uBounceDirections,
+    materials.uniforms.uBounceDirections,
+  );
   assert.equal(shader.uniforms.uGlowColor, materials.uniforms.uGlowColor);
   assert.equal(shader.uniforms.uGlowIntensity, materials.uniforms.uGlowIntensity);
 }

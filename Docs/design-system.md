@@ -151,7 +151,7 @@ referência. A cena é decorativa e não representa resultados da pesquisa.
   índices, desenhando cada ponto uma única vez, com deslocamento local de `0.025`
   para reduzir conflito de profundidade. Suas posições têm pequena irregularidade
   fixa para suavizar a aparência de grade.
-- Câmera em `[0, 3.3, 8.8]`, olhando para `[0, -0.1, -3.2]`, com `fov=43`:
+- Câmera em `[0, 3.3, 8.8]`, olhando para `[0, -0.1, -3.2]`, com `fov=38`:
   aproximadamente 16 graus abaixo da horizontal. Em larguras menores que
   640 px, câmera e alvo se deslocam `2.1` unidades no eixo X para manter a crista
   direita no enquadramento.
@@ -175,26 +175,42 @@ dobra nem atrai a malha, e clicar ou tocar cria apenas uma coroa luminosa, sem
 alterar sua altura. O ponto do clique é obtido por raycasting numérico na fórmula
 da superfície e convertido para coordenadas locais com `worldToLocal`.
 
-### Coroa luminosa a partir do clique
+### Coroas luminosas, colisões e faíscas
 
 `Frontend/src/feats/home/ripple-field.ts` concentra `RIPPLE_SETTINGS`, o ciclo de
-vida dos anéis e a referência numérica do brilho. O clique primário ou toque na
-superfície cria uma coroa no ponto local da interseção. Arrastos acima de 5 px não
-geram anéis; o botão HTML sobreposto continua interceptando seus próprios cliques.
+vida dos anéis, a detecção de colisões e a referência numérica do brilho. O
+clique primário ou toque na superfície cria uma coroa no ponto local da
+interseção. Arrastos acima de 5 px não geram anéis; o botão HTML sobreposto
+continua interceptando seus próprios cliques.
 
 - Velocidade de propagação: 3 unidades/s.
 - Núcleo com largura de 0,085 unidade e halo com largura de 0,55 unidade.
 - Cor base `#e7a878`, intensidade 3,8 e força relativa do halo 0,32.
 - Entrada suave de 0,12 s, duração de 4,8 s, amortecimento exponencial de 0,24/s
   e desaparecimento suave nos últimos 1,15 s.
-- Até quatro anéis simultâneos. Com o conjunto cheio, cliques adicionais são
-  ignorados até um anel terminar, evitando cortes abruptos.
+- Até 20 efeitos simultâneos. Com o conjunto cheio, cliques adicionais são
+  ignorados até uma coroa ou sua rebatida terminar, evitando cortes abruptos.
+- Duas coroas iniciadas em pontos separados colidem quando a soma de seus raios
+  alcança a distância entre as origens. O instante e o ponto do primeiro contato
+  são calculados no JavaScript, independentemente da taxa de quadros.
+- No contato, as coroas circulares dão lugar a dois arcos direcionais que se
+  afastam em sentidos opostos durante 1,65 s.
+- Os arcos continuam sendo frentes ativas. Quando um deles encontra uma nova
+  coroa criada por clique, os dois efeitos geram faíscas e passam a se afastar
+  do novo ponto de contato, permitindo colisões encadeadas enquanto estiverem
+  visíveis. Os participantes reutilizam seus próprios slots, sem ampliar a
+  capacidade fixa da cena.
+- Cada colisão dispara 14 faíscas por 0,78 s, divididas entre as duas direções da
+  rebatida. As faíscas usam buffers fixos para até 20 explosões e acompanham
+  a altura procedural da superfície durante sua trajetória.
 
 O shader em `wave-materials.ts` desloca superfície e partículas apenas pelo campo
 procedural, recalcula a direção de iluminação por diferenças finitas com passo
-`0.025` e acrescenta os anéis no fragment shader. Como o brilho não muda a
-geometria, `wave-raycast.ts` usa somente a altura do campo procedural. As versões
-JS e GLSL das fórmulas devem permanecer sincronizadas.
+`0.025` e acrescenta as coroas e os arcos direcionais no fragment shader. As
+faíscas são pontos aditivos com núcleo branco e borda creme, atualizados em um
+buffer pequeno separado. Como o brilho não muda a geometria, `wave-raycast.ts`
+usa somente a altura do campo procedural. As versões JS e GLSL das fórmulas
+devem permanecer sincronizadas.
 
 ### Desempenho e acessibilidade
 
@@ -211,11 +227,18 @@ resolução extra em telas de alta densidade. Materiais e enquadramento existent
 foram preservados; a granulação fica menos densa.
 
 Não há atualização de todos os vértices nem `computeVertexNormals` na CPU por
-frame. A GPU calcula alturas, normais e brilho; o JavaScript atualiza apenas tempo
-e quatro vetores reutilizados de anéis. O amortecimento temporal dos anéis é
-pré-calculado uma vez por anel/frame. A evolução usa tempo transcorrido,
-independente do número de frames. A cena pausa fora da área visível ou com a aba
-oculta e desconsidera o intervalo de pausa ao retomar.
+frame. A GPU calcula alturas, normais e brilho; o JavaScript atualiza apenas o
+tempo, 20 frentes reutilizadas de coroas e rebatidas e, quando há colisão, no
+máximo 280 posições de faíscas. O amortecimento temporal é pré-calculado uma vez
+por efeito/frame. A evolução usa tempo transcorrido, independente do número de
+frames. A cena pausa fora da área visível ou com a aba oculta e desconsidera o
+intervalo de pausa ao retomar.
+
+A detecção compara no máximo 190 pares por frame. Coroas circulares usam o
+instante analítico do primeiro contato; pares que incluem arcos direcionais
+percorrem apenas o intervalo transcorrido desde o frame anterior, em passos de
+1/90 s com refinamento local. Isso evita perder colisões em aparelhos com taxas
+de quadros diferentes sem simular a malha na CPU.
 
 O raycasting busca a primeira interseção com a fórmula em até 192 passos, com
 refinamento por 12 bisseções; não percorre todos os triângulos. É uma aproximação
@@ -224,11 +247,11 @@ limites de visibilidade expandidos para comportar a deformação na GPU. Geometr
 materiais e máscara são descartados ao desmontar. `land-page.tsx` mantém a cena
 em carregamento separado com `lazy`/`Suspense` e fundo creme durante a espera.
 
-Com `prefers-reduced-motion`, esta cena mantém uma pose estática e não aplica
-os impulsos de clique. O Canvas é decorativo (`aria-hidden`) e tem um fundo
-alternativo quando WebGL não está disponível. O conteúdo HTML fica em outra
-camada. Essas garantias dizem respeito à cena; as animações Motion do conteúdo
-da Home continuam como estavam nesta etapa.
+Com `prefers-reduced-motion`, esta cena mantém uma pose estática e não aplica os
+impulsos de clique, colisões ou faíscas. O Canvas é decorativo (`aria-hidden`) e
+tem um fundo alternativo quando WebGL não está disponível. O conteúdo HTML fica
+em outra camada. Essas garantias dizem respeito à cena; as animações Motion do
+conteúdo da Home continuam como estavam nesta etapa.
 
 A propriedade `as` do componente `Text` é restrita a componentes compatíveis
 com atributos HTML. Isso evita conflito de tipagem com os elementos 3D que o
@@ -238,10 +261,12 @@ React Three Fiber acrescenta ao JSX.
 
 Em `Frontend`, executar `npm run build`, `npm run lint` e
 `node scripts/check-waves.mjs`. O script verifica equivalência da altura em
-JS/GLSL em precisão dupla, propagação e amortecimento das coroas, reutilização do
-conjunto de anéis e independência da taxa de frames. Compara também o raycast
-numérico com uma malha densa deformada e confere a injeção dos uniforms de brilho,
-a ausência de handlers de hover e as cores dos materiais.
+JS/GLSL em precisão dupla, propagação e amortecimento das coroas, instante e
+direção das colisões, ciclo das rebatidas, trajetória das faíscas, reutilização
+dos conjuntos fixos, colisões encadeadas e independência da taxa de frames.
+Compara também o raycast numérico com uma malha densa deformada e confere a
+injeção dos uniforms de brilho, a ausência de handlers de hover e as cores dos
+materiais.
 
 Na validação da integração, 6.724 amostras de altura, 1.200 amostras de brilho e
 675 raios passaram; o maior desvio de distância do raycast foi aproximadamente
