@@ -1,6 +1,7 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import { HomePage } from "./pages/land-page";
+import { LandPage } from "./pages/land-page";
+import { HomePage } from "./pages/home-page";
 
 const ComponentsPage = lazy(() =>
   import("./pages/components-page").then((module) => ({
@@ -29,7 +30,7 @@ export default function App() {
             </Suspense>
           }
         />
-        <Route path="/" element={<HomePage />} />
+        <Route path="/" element={<LandPage />} />
         <Route
           path="/import"
           element={
@@ -37,6 +38,19 @@ export default function App() {
               <ImportPage />
             </Suspense>
           }
+        />
+        <Route
+          path="/home"
+          element={<Navigate to="/home/pesquisa-tecnologia-2026" replace />}
+        />
+        <Route path="/home/:pesquisaId" element={<HomePage />} />
+        <Route
+          path="/home/:pesquisaId/perguntas"
+          element={<HomePage />}
+        />
+        <Route
+          path="/home/:pesquisaId/perguntas/:perguntaId"
+          element={<HomePage />}
         />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

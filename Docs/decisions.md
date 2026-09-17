@@ -95,11 +95,57 @@ realizada e suas consequências.
   alinhamentos, larguras, estilos de linha e ordenação controlada ou interna. A
   virtualização só será incluída quando o volume real justificar.
 
+## DEC-009 - Estrutura e gráficos do dashboard
+
+- **Situação:** aceita
+- **Decisão:** separar visão geral, catálogo de perguntas e análise individual;
+  manter uma navegação lateral recolhível compartilhada; e usar componentes
+  cartesianos próprios para colunas, barras, histograma, pontos e boxplot.
+- **Motivo:** tornar a consulta mais direta, preservar contexto entre telas e
+  padronizar eixos, escalas, tooltips, estados de interação e acessibilidade sem
+  duplicar implementações.
+- **Consequências:** a rota `/home/:pesquisaId/perguntas` concentra busca e
+  filtros; a visão geral fica dedicada aos indicadores da pesquisa; novos
+  gráficos devem reutilizar `CartesianChart` ou seguir sua escala agradável e
+  suas linhas-guia; o gráfico de pontos anima a linha ao abrir, salvo quando há
+  preferência por movimento reduzido; e todo componente novo precisa aparecer
+  no catálogo `/components`.
+
+## DEC-010 - Interação e reutilização na V3
+
+- **Situação:** aceita
+- **Decisão:** permitir seleção persistente das marcas gráficas; separar pizza e
+  rosca; compartilhar busca e filtros entre importação e catálogo; e extrair uma
+  superfície tabular comum sem transformar tabelas estatísticas em grades de
+  edição.
+- **Motivo:** melhorar a comparação dos valores, manter comportamentos iguais em
+  telas diferentes e evitar que componentes com responsabilidades distintas
+  recebam APIs excessivamente complexas.
+- **Consequências:** tooltips fixados são limpos por clique externo ou `Escape`;
+  `PieChart` atende às visualizações de perguntas e `DonutChart` à visão geral;
+  `QuestionFilters` concentra o popover de tipo e categoria; `QuestionsGrid` e
+  a distribuição de frequências reutilizam `DataTableSurface` e preservam suas
+  regras próprias.
+
+## DEC-011 - Animações e estados dos gráficos na V4
+
+- **Situação:** aceita
+- **Decisão:** ancorar as animações de barras na geometria das marcas, construir
+  o boxplot em etapas e revelar a pizza por máscara circular SVG.
+- **Motivo:** dar continuidade visual aos eixos e às medidas, sem alterar valores
+  ou introduzir dependências de animação nos gráficos.
+- **Consequências:** seleção prevalece sobre hover e foco; o contorno preto de
+  foco é substituído por indicação na paleta para teclado; a pizza usa composição
+  compacta e responsiva; o boxplot é compartilhado entre dashboard e catálogo;
+  todas as novas animações respeitam a preferência por movimento reduzido.
+
 ## Decisões pendentes
 
 | Tema | Definição necessária | Impacto principal |
 | :--- | :--- | :--- |
 | Quartis | Confirmar a convenção matemática esperada. | Cálculos e testes estatísticos |
+| Rótulo das classes | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`. | Interface e documentação estatística |
+| Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição |
 | Classes de Sturges | Definir o arredondamento dos limites das classes. | Histograma, ogivas e tabelas |
 | Exportação JPEG | Confirmar se o dashboard completo precisa ser uma única imagem. | Interface e exportação |
 | Limites de arquivo | Definir tamanho máximo e quantidade prática de respostas. | Validação e desempenho |

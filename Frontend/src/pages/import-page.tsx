@@ -5,9 +5,7 @@ import {
   LucideCloudUpload,
   LucideFileSpreadsheet,
   LucideFileText,
-  LucideFilter,
   LucideLink,
-  LucideSearch,
   LucideUpload,
 } from "lucide-react";
 import {
@@ -22,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
+  QuestionFilters,
   QuestionsGrid,
   Stepper,
   Text,
@@ -114,9 +113,6 @@ const categoriasPorTipo: Record<TipoVariavel, CategoriaVariavel[]> = {
   Qualitativa: ["Nominal", "Ordinal"],
 };
 
-const selectClassName =
-  "h-10 rounded-xl border border-line bg-paper px-3 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-3 focus:ring-brand-100";
-
 function normalizarBusca(value: string) {
   return value
     .normalize("NFD")
@@ -140,7 +136,6 @@ export function ImportPage() {
   const [perguntas, setPerguntas] = useState<PerguntaRow[]>(perguntasMockadas);
   const [busca, setBusca] = useState("");
   const [buscaComDelay, setBuscaComDelay] = useState("");
-  const [filtrosAbertos, setFiltrosAbertos] = useState(false);
   const [filtroTipo, setFiltroTipo] = useState<TipoVariavel | "todos">("todos");
   const [filtroCategoria, setFiltroCategoria] = useState<
     CategoriaVariavel | "todas"
@@ -249,11 +244,7 @@ export function ImportPage() {
   function buscarPlanilha(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!linkPlanilha.trim()) return;
-    // A chamada da API será conectada aqui quando o endpoint estiver disponível.
   }
-
-  const filtrosAtivos =
-    Number(filtroTipo !== "todos") + Number(filtroCategoria !== "todas");
 
   return (
     <main
@@ -290,88 +281,16 @@ export function ImportPage() {
                 </Text>
               </div>
 
-              <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-end">
-                <div className="w-full sm:max-w-md">
-                  <TextField
-                    aria-label="Buscar perguntas"
-                    placeholder="Buscar por código, pergunta, tipo ou categoria..."
-                    value={busca}
-                    onChange={(event) => setBusca(event.target.value)}
-                    leadingIcon={<LucideSearch className="size-4" />}
-                  />
-                </div>
-                <Button
-                  variant={filtrosAbertos ? "secondary" : "outline"}
-                  size="icon"
-                  aria-label="Exibir filtros"
-                  aria-controls="filtros-da-grid"
-                  aria-expanded={filtrosAbertos}
-                  aria-pressed={filtrosAbertos}
-                  onClick={() => setFiltrosAbertos((open) => !open)}
-                  className="relative shrink-0"
-                >
-                  <LucideFilter className="size-4" />
-                  {filtrosAtivos > 0 && (
-                    <span className="absolute -right-1 -top-1 grid size-4 place-items-center rounded-full bg-brand-700 text-[0.6rem] font-bold text-paper">
-                      {filtrosAtivos}
-                    </span>
-                  )}
-                </Button>
-              </div>
-
-              {filtrosAbertos && (
-                <div
-                  id="filtros-da-grid"
-                  className="mb-4 flex flex-col gap-3 rounded-xl border border-line bg-surface/70 p-3 sm:flex-row sm:items-end"
-                >
-                  <label className="grid flex-1 gap-1.5 text-sm font-semibold text-ink">
-                    Tipo
-                    <select
-                      className={selectClassName}
-                      value={filtroTipo}
-                      onChange={(event) =>
-                        alterarFiltroTipo(
-                          event.target.value as TipoVariavel | "todos",
-                        )
-                      }
-                    >
-                      <option value="todos">Todos os tipos</option>
-                      <option value="Quantitativa">Quantitativa</option>
-                      <option value="Qualitativa">Qualitativa</option>
-                    </select>
-                  </label>
-                  <label className="grid flex-1 gap-1.5 text-sm font-semibold text-ink">
-                    Categoria
-                    <select
-                      className={selectClassName}
-                      value={filtroCategoria}
-                      onChange={(event) =>
-                        setFiltroCategoria(
-                          event.target.value as CategoriaVariavel | "todas",
-                        )
-                      }
-                    >
-                      <option value="todas">Todas as categorias</option>
-                      {categoriasDisponiveis.map((categoria) => (
-                        <option key={categoria} value={categoria}>
-                          {categoria}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={filtrosAtivos === 0}
-                    onClick={() => {
-                      setFiltroTipo("todos");
-                      setFiltroCategoria("todas");
-                    }}
-                  >
-                    Limpar filtros
-                  </Button>
-                </div>
-              )}
+              <QuestionFilters
+                className="mb-3 ml-auto w-full sm:max-w-md"
+                query={busca}
+                onQueryChange={setBusca}
+                typeValue={filtroTipo}
+                onTypeChange={alterarFiltroTipo}
+                categoryValue={filtroCategoria}
+                onCategoryChange={setFiltroCategoria}
+                categories={categoriasDisponiveis}
+              />
 
               <Text variant="caption" tone="muted" className="mb-2">
                 {perguntasFiltradas.length} de {perguntas.length} perguntas
@@ -565,7 +484,7 @@ export function ImportPage() {
             <Button
               onClick={() => {
                 if (etapa < 3) setEtapa((current) => current + 1);
-                if (etapa === 3) navigate("/");
+                if (etapa === 3) navigate("/home/pesquisa-tecnologia-2026");
               }}
             >
               {etapa === 3 ? "Finalizar" : "Continuar"}

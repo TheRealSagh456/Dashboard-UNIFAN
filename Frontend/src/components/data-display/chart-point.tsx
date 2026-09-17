@@ -3,7 +3,7 @@ import type { SVGAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 const pointStyles = cva(
-  'cursor-default stroke-paper stroke-[3] transition duration-200 hover:stroke-brand-200 focus-visible:outline-none focus-visible:stroke-ink',
+  'cursor-default stroke-paper stroke-[3] outline-none transition duration-200 hover:stroke-brand-200 focus-visible:stroke-brand-600',
   {
     variants: {
       tone: {

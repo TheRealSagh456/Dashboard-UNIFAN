@@ -26,11 +26,21 @@ O índice `Frontend/src/components/index.ts` exporta:
 - `Tag`: marcador com ponto colorido nas variantes `chart` e `grid`; a variante
   de grade pode abrir um seletor nativo para edição;
 - `ChartBar`: barras horizontais ou verticais, com animação alinhada à orientação;
+- `CartesianChart`: colunas, barras, histograma e linha com eixos, escala,
+  tooltips e linhas-guia nas coordenadas do item ativo;
+- `BoxplotChart`: resumo de cinco números com eixos, tooltips e montagem animada;
+- `DataTableSurface`: superfície, recorte, rolagem e área de paginação
+  compartilhados pelas grades e tabelas;
 - `ChartPoint`: marca circular independente para gráficos de pontos ou linhas;
 - `ChartSector`: setor SVG independente para gráficos circulares;
+- `DonutChart`: composição de setores, legenda, total central e tooltips;
+- `PieChart`: gráfico circular preenchido, com legenda e seleção persistente;
 - `Tooltip`: conteúdo flutuante associável a qualquer elemento HTML ou SVG;
 - `MetricCard`: apresentação compacta de indicadores;
 - `NavigationItem`: item padronizado de navegação lateral;
+- `DashboardSidebar`: navegação completa do dashboard nos estados expandido e
+  recolhido;
+- `QuestionFilters`: busca e filtros sobrepostos de tipo e categoria;
 - `Stepper`: indicação de progresso entre etapas.
 - `QuestionsGrid`: grade editável própria para revisar as perguntas importadas,
   seus tipos e suas categorias estatísticas.
@@ -89,6 +99,81 @@ O campo do Google Sheets mantém o link em estado controlado e possui um botão
 `Buscar`. O envio do formulário apenas evita a navegação do navegador; a futura
 chamada de validação deverá ser conectada nesse manipulador quando o endpoint
 estiver disponível.
+
+## Dashboard de perguntas
+
+O dashboard usa `/home/:pesquisaId` para a visão geral,
+`/home/:pesquisaId/perguntas` para o catálogo e
+`/home/:pesquisaId/perguntas/:perguntaId` para a análise individual. Enquanto a
+API não estiver integrada, as telas consomem os dados demonstrativos de
+`Frontend/src/feats/home/dashboard-data.ts`.
+
+A visão geral apresenta os totais de respostas, perguntas e ausências, um
+gráfico de rosca com as quatro categorias de variável e a lista de perguntas com
+dados ausentes. A rosca fica centralizada e usa uma legenda abaixo dos setores.
+O catálogo combina busca e um popover de filtros por tipo e categoria, sem
+deslocar os cards quando é aberto. Em cada card, tipo e categoria aparecem lado
+a lado com o mesmo componente `Tag` usado nas grades, e o enunciado ocupa o
+centro do espaço entre os metadados.
+
+A `DashboardSidebar` permanece disponível nas três telas. No desktop, pode ser
+recolhida até a faixa de ícones e guarda essa preferência no navegador. Em telas
+menores, transforma-se em um painel aberto pelo cabeçalho. `Exportar` permanece
+desabilitado nesta etapa e `Enviar outra planilha` retorna à importação.
+
+Cada análise apresenta somente as medidas e visualizações compatíveis com o tipo
+da variável. A visualização `Pizza` usa o `PieChart`; o `DonutChart` permanece na
+visão geral. Colunas, barras, histograma, pontos e boxplot usam uma área
+cartesiana com eixos, rótulos e escala de intervalos agradáveis. O hover e o foco
+de teclado mostram o valor e uma linha-guia pontilhada apenas no eixo numérico.
+Os rótulos das categorias permanecem horizontais e alinhados às marcas. O
+gráfico de pontos desenha a linha progressivamente ao ser aberto e revela as
+marcas em sequência; `prefers-reduced-motion` remove essa animação.
+
+As marcas gráficas usam três níveis visuais: base clara, hover intermediário e
+seleção forte. O clique fixa tooltip e seleção; outro item transfere a seleção,
+enquanto clique externo ou `Escape` limpa o estado. Barras verticais têm somente
+os cantos superiores arredondados, barras horizontais somente a extremidade de
+valor, e os eixos são desenhados acima das bases.
+
+Na V4, a seleção tem prioridade sobre hover e foco, sem contorno preto ao
+clicar. A navegação por teclado conserva um indicador na paleta do projeto.
+As barras usam sua própria geometria como referência da transformação, mantendo
+a base presa ao eixo durante todos os quadros da animação.
+
+O `BoxplotChart` recebe os cinco valores, o rótulo do eixo e a descrição acessível.
+Sua entrada dura 1.250 ms: mínimo (180 ms), extensão até o máximo (470 ms),
+máximo (180 ms) e projeção vertical da caixa com a mediana (420 ms).
+O `PieChart` revela o círculo no sentido horário em 900 ms com uma máscara SVG,
+sem alterar as proporções dos setores. Gráfico e legenda formam um conjunto
+centralizado e responsivo, com fonte de 12 px e marcadores menores na legenda.
+As duas animações acontecem na abertura, não se repetem ao selecionar um valor
+e mostram o resultado completo imediatamente com `prefers-reduced-motion`.
+O catálogo usa os mesmos componentes do dashboard.
+
+Arquivos da V4:
+
+- `Frontend/src/components/data-display/`: `cartesian-chart.tsx`,
+  `boxplot-chart.tsx`, `pie-chart.tsx`, `donut-chart.tsx`, `chart-sector.tsx` e
+  `chart-point.tsx`;
+- `Frontend/src/components/index.ts`, `Frontend/src/index.css`,
+  `Frontend/src/feats/home/question-charts.tsx` e
+  `Frontend/src/pages/components-page.tsx`;
+- `Docs/design-system.md`, `Docs/business-rules.md` e `Docs/decisions.md`.
+
+Nenhuma dependência foi adicionada. A validação inclui lint, build e conferência
+no navegador das origens das barras durante o crescimento, seleção por clique,
+teclado e `Escape`, sequência do boxplot, abertura da pizza e catálogo. A pizza
+também foi conferida em viewport de 390 px, sem overflow horizontal da página.
+O build conserva o aviso anterior de tamanho do pacote da cena decorativa.
+
+A `QuestionsGrid` e a distribuição compartilham `DataTableSurface`, mantendo
+borda, recorte e comportamento de superfície consistentes. A distribuição de
+frequências usa uma tabela fixa de oito colunas a partir do
+breakpoint `lg`. Em larguras menores, cada classe vira um card com os seis valores
+de frequência, evitando rolagem horizontal. Os títulos das abreviações usam
+tooltips com suas definições. As regras estatísticas e o formato esperado dos
+dados estão em [business-rules.md](./business-rules.md).
 
 ## Variantes e composição de classes
 

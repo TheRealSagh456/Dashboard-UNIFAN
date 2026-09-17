@@ -12,6 +12,7 @@ import {
   type CSSProperties,
 } from "react";
 import { cn } from "../../lib/cn";
+import { DataTableSurface } from "../data-display/data-table-surface";
 import { Tag, type TagOption } from "./tag";
 
 export type TipoVariavel = "Quantitativa" | "Qualitativa";
@@ -268,22 +269,52 @@ export function QuestionsGrid({
   }
 
   return (
-    <div
+    <DataTableSurface
       className={cn(
-        "relative w-full overflow-hidden rounded-2xl border border-line bg-paper",
-        normalizedItemsPerPage && "pb-10",
         className,
       )}
+      footer={
+        normalizedItemsPerPage ? (
+          <nav
+            className="absolute bottom-1 right-2 z-10 flex items-center bg-transparent opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100"
+            aria-label="Paginação da grade"
+          >
+            <button
+              type="button"
+              className="grid size-8 place-items-center bg-transparent text-muted transition hover:scale-110 hover:text-brand-700 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => changePage(activePage - 1)}
+              disabled={activePage === 1}
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="size-4" />
+            </button>
+            <span
+              className="min-w-12 text-center text-xs font-semibold tabular-nums text-ink"
+              aria-live="polite"
+            >
+              {activePage}/{totalPages}
+            </span>
+            <button
+              type="button"
+              className="grid size-8 place-items-center bg-transparent text-muted transition hover:scale-110 hover:text-brand-700 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 disabled:pointer-events-none disabled:opacity-30"
+              onClick={() => changePage(activePage + 1)}
+              disabled={activePage === totalPages}
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="size-4" />
+            </button>
+          </nav>
+        ) : undefined
+      }
       {...props}
     >
-      <div className="overflow-x-auto">
-        <div
-          role="grid"
-          aria-label={ariaLabel}
-          aria-rowcount={rows.length + (showHeader ? 1 : 0)}
-          aria-colcount={columns.length}
-          className={sizeStyles[size].minWidth}
-        >
+      <div
+        role="grid"
+        aria-label={ariaLabel}
+        aria-rowcount={rows.length + (showHeader ? 1 : 0)}
+        aria-colcount={columns.length}
+        className={sizeStyles[size].minWidth}
+      >
           {showHeader && (
             <div
               role="row"
@@ -399,39 +430,7 @@ export function QuestionsGrid({
               </div>
             ))
           )}
-        </div>
       </div>
-      {normalizedItemsPerPage && (
-        <nav
-          className="absolute bottom-1 right-2 z-10 flex items-center bg-transparent opacity-60 transition-opacity hover:opacity-100 focus-within:opacity-100"
-          aria-label="Paginação da grade"
-        >
-          <button
-            type="button"
-            className="grid size-8 place-items-center bg-transparent text-muted transition hover:scale-110 hover:text-brand-700 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 disabled:pointer-events-none disabled:opacity-30"
-            onClick={() => changePage(activePage - 1)}
-            disabled={activePage === 1}
-            aria-label="Página anterior"
-          >
-            <ChevronLeft className="size-4" />
-          </button>
-          <span
-            className="min-w-12 text-center text-xs font-semibold tabular-nums text-ink"
-            aria-live="polite"
-          >
-            {activePage}/{totalPages}
-          </span>
-          <button
-            type="button"
-            className="grid size-8 place-items-center bg-transparent text-muted transition hover:scale-110 hover:text-brand-700 focus-visible:rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-200 disabled:pointer-events-none disabled:opacity-30"
-            onClick={() => changePage(activePage + 1)}
-            disabled={activePage === totalPages}
-            aria-label="Próxima página"
-          >
-            <ChevronRight className="size-4" />
-          </button>
-        </nav>
-      )}
-    </div>
+    </DataTableSurface>
   );
 }

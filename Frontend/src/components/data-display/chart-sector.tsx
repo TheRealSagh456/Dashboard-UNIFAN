@@ -3,7 +3,7 @@ import type { SVGAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 const sectorStyles = cva(
-  'cursor-default stroke-paper stroke-[2] transition duration-200 hover:brightness-110 focus-visible:outline-none focus-visible:stroke-ink focus-visible:stroke-[3]',
+  'cursor-default stroke-paper stroke-[2] outline-none transition duration-200 hover:brightness-110 focus-visible:stroke-brand-600 focus-visible:stroke-[3]',
   {
     variants: {
       tone: {

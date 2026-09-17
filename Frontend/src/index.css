@@ -98,6 +98,26 @@ a {
   }
 }
 
+@keyframes chart-line-draw {
+  from {
+    stroke-dashoffset: 1;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes chart-point-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
 @keyframes import-drop-glow {
   0%,
   100% {
@@ -123,13 +143,51 @@ a {
 }
 
 .chart-bar-rise-vertical {
+  transform-box: fill-box;
   transform-origin: center bottom;
   animation: chart-bar-rise-vertical 500ms ease-out both;
 }
 
 .chart-bar-rise-horizontal {
+  transform-box: fill-box;
   transform-origin: left center;
   animation: chart-bar-rise-horizontal 500ms ease-out both;
+}
+
+.chart-line-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: chart-line-draw 1100ms ease-out forwards;
+}
+
+.chart-point-enter {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: chart-point-enter 260ms ease-out forwards;
+}
+
+.chart-boxplot-cap,
+.chart-boxplot-box {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: chart-bar-rise-vertical 180ms ease-out both;
+}
+
+.chart-boxplot-span {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: chart-bar-rise-horizontal 470ms ease-out 180ms both;
+}
+
+.chart-boxplot-box {
+  animation-duration: 420ms;
+  animation-delay: 830ms;
+}
+
+.chart-pie-reveal {
+  stroke-dasharray: 1;
+  animation: chart-line-draw 900ms ease-out both;
 }
 
 .import-drop-active {
@@ -143,10 +201,26 @@ a {
 @media (prefers-reduced-motion: reduce) {
   .chart-bar-rise-horizontal,
   .chart-bar-rise-vertical,
+  .chart-line-draw,
+  .chart-point-enter,
+  .chart-boxplot-cap,
+  .chart-boxplot-span,
+  .chart-boxplot-box,
+  .chart-pie-reveal,
   .import-drop-active,
   .import-drop-active .import-drop-content,
   .gallery-enter {
     animation: none;
+  }
+
+  .chart-line-draw,
+  .chart-pie-reveal {
+    stroke-dashoffset: 0;
+  }
+
+  .chart-point-enter {
+    opacity: 1;
+    transform: none;
   }
 }
 

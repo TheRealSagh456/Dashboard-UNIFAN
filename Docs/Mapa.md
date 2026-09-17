@@ -15,7 +15,7 @@ atualizados sempre que uma decisão relevante for tomada.
 | [mock-data.md](./mock-data.md) | Fixtures compartilhados entre frontend e backend. | Em elaboração |
 | `requirements.md` | Escopo, requisitos e critérios de aceite. | Pendente |
 | `architecture.md` | Arquitetura, pastas, camadas e fluxo dos dados. | Pendente |
-| `business-rules.md` | Regras estatísticas e visualizações permitidas. | Pendente |
+| [business-rules.md](./business-rules.md) | Regras estatísticas e visualizações permitidas. | Em elaboração |
 | [import-format.md](./import-format.md) | Formatos de arquivo e regras de importação. | Em elaboração |
 | [design-system.md](./design-system.md) | Tokens visuais, componentes reutilizáveis e catálogo do frontend. | Ativo |
 | `api.md` | Contratos entre frontend e backend. | Pendente |

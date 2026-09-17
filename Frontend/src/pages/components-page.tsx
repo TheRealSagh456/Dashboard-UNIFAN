@@ -2,13 +2,11 @@ import {
   ArrowRight,
   BarChart3,
   Boxes,
-  ChartNoAxesColumnIncreasing,
   Check,
   CircleHelp,
   Download,
   Eye,
   EyeOff,
-  Filter,
   LayoutDashboard,
   Menu,
   MousePointerClick,
@@ -23,17 +21,25 @@ import {
 import { useMemo, useState } from "react";
 import {
   Badge,
+  BoxplotChart,
   Button,
   Card,
+  CartesianChart,
   ChartBar,
   ChartPoint,
-  ChartSector,
+  DataTableSurface,
+  DashboardSidebar,
+  DonutChart,
   MetricCard,
   NavigationItem,
+  PieChart,
+  QuestionFilters,
   Stepper,
   Text,
   TextField,
   Tooltip,
+  type CategoriaVariavel,
+  type TipoVariavel,
 } from "../components";
 import { cn } from "../lib/cn";
 
@@ -66,7 +72,7 @@ const sections = [
     id: "data",
     label: "Dados",
     icon: BarChart3,
-    keywords: "gráfico barra chart",
+    keywords: "gráfico barra chart pontos setores pizza boxplot tooltip",
   },
   {
     id: "navigation",
@@ -141,41 +147,6 @@ const pointData = [
   },
 ];
 
-const sectorData = [
-  {
-    label: "ChatGPT",
-    value: "63,2%",
-    detail: "608 respostas",
-    startAngle: 0,
-    endAngle: 227.52,
-    tone: "brand" as const,
-  },
-  {
-    label: "Gemini",
-    value: "21,4%",
-    detail: "206 respostas",
-    startAngle: 227.52,
-    endAngle: 304.56,
-    tone: "warm" as const,
-  },
-  {
-    label: "Copilot",
-    value: "8,7%",
-    detail: "84 respostas",
-    startAngle: 304.56,
-    endAngle: 335.88,
-    tone: "positive" as const,
-  },
-  {
-    label: "Outras",
-    value: "6,7%",
-    detail: "66 respostas",
-    startAngle: 335.88,
-    endAngle: 360,
-    tone: "soft" as const,
-  },
-];
-
 const colors = [
   { name: "Marca", value: "#A9531F", className: "bg-brand-600" },
   { name: "Canvas", value: "#F2E8DC", className: "bg-canvas" },
@@ -246,6 +217,34 @@ export function ComponentsPage() {
   );
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [tooltipsEnabled, setTooltipsEnabled] = useState(true);
+  const [dashboardSidebarCollapsed, setDashboardSidebarCollapsed] =
+    useState(false);
+  const [filterQuery, setFilterQuery] = useState("");
+  const [filterType, setFilterType] = useState<TipoVariavel | "todos">("todos");
+  const [filterCategory, setFilterCategory] = useState<
+    CategoriaVariavel | "todas"
+  >("todas");
+  const filterCategories =
+    filterType === "Quantitativa"
+      ? (["Discreta", "Contínua"] as const)
+      : filterType === "Qualitativa"
+        ? (["Nominal", "Ordinal"] as const)
+        : (["Discreta", "Contínua", "Nominal", "Ordinal"] as const);
+
+  function changeFilterType(value: TipoVariavel | "todos") {
+    setFilterType(value);
+    if (
+      value !== "todos" &&
+      filterCategory !== "todas" &&
+      !(
+        value === "Quantitativa"
+          ? ["Discreta", "Contínua"]
+          : ["Nominal", "Ordinal"]
+      ).includes(filterCategory)
+    ) {
+      setFilterCategory("todas");
+    }
+  }
 
   const normalizedQuery = query.trim().toLocaleLowerCase("pt-BR");
   const visibleSections = useMemo(
@@ -606,20 +605,28 @@ export function ComponentsPage() {
                     disabled
                     readOnly
                   />
-                  <div className="flex items-end gap-2">
-                    <TextField
-                      label="Filtrar categoria"
-                      placeholder="Selecione ou digite"
-                      className="pr-10"
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      aria-label="Aplicar filtro"
-                    >
-                      <Filter className="size-4" />
-                    </Button>
-                  </div>
+                  <QuestionFilters
+                    className="md:col-span-2"
+                    query={filterQuery}
+                    onQueryChange={setFilterQuery}
+                    typeValue={filterType}
+                    onTypeChange={changeFilterType}
+                    categoryValue={filterCategory}
+                    onCategoryChange={setFilterCategory}
+                    categories={filterCategories}
+                  />
+                  <DataTableSurface scrollable={false} className="md:col-span-2">
+                    <div role="table" aria-label="Exemplo de tabela compartilhada">
+                      <div role="row" className="grid grid-cols-[7rem_1fr] border-b border-line bg-surface/80 text-xs font-bold uppercase tracking-[0.08em] text-muted">
+                        <span role="columnheader" className="border-r border-line px-4 py-3">Código</span>
+                        <span role="columnheader" className="px-4 py-3">Pergunta</span>
+                      </div>
+                      <div role="row" className="grid grid-cols-[7rem_1fr] text-sm text-ink hover:bg-brand-50/55">
+                        <span role="cell" className="border-r border-line px-4 py-3 font-semibold">Q01</span>
+                        <span role="cell" className="px-4 py-3">Qual é a sua idade?</span>
+                      </div>
+                    </div>
+                  </DataTableSurface>
                 </div>
               </Card>
             </ShowcaseSection>
@@ -713,6 +720,48 @@ export function ComponentsPage() {
 
               <div className="mt-5 grid min-w-0 gap-5 xl:grid-cols-2">
                 <Card className="min-w-0 overflow-hidden">
+                  <Text variant="label">Plano cartesiano reutilizável</Text>
+                  <Text variant="caption" tone="muted" className="mt-1">
+                    Eixos, escala agradável, coordenadas pontilhadas e animação
+                    progressiva fazem parte do mesmo componente.
+                  </Text>
+                  <CartesianChart
+                    className="mt-5"
+                    data={[
+                      { label: "Segunda", value: 42 },
+                      { label: "Terça", value: 68 },
+                      { label: "Quarta", value: 55 },
+                      { label: "Quinta", value: 94 },
+                      { label: "Sexta", value: 81 },
+                    ]}
+                    variant="line"
+                    xLabel="Dia da semana"
+                    yLabel="Quantidade"
+                    ariaLabel="Acessos por dia da semana"
+                  />
+                </Card>
+
+                <Card className="min-w-0">
+                  <Text variant="label">Gráfico de rosca reutilizável</Text>
+                  <Text variant="caption" tone="muted" className="mt-1">
+                    Resume categorias exclusivas sem precisar repetir SVG ou
+                    lógica de tooltip em cada tela.
+                  </Text>
+                  <DonutChart
+                    className="mt-6"
+                    data={[
+                      { label: "Discreta", value: 8, tone: "brand" },
+                      { label: "Contínua", value: 5, tone: "warm" },
+                      { label: "Nominal", value: 9, tone: "positive" },
+                      { label: "Ordinal", value: 6, tone: "soft" },
+                    ]}
+                    centerValue="28"
+                    centerLabel="variáveis"
+                    ariaLabel="Tipos de variável"
+                  />
+                </Card>
+
+                <Card className="min-w-0 overflow-hidden">
                   <Text variant="label">Gráfico de pontos</Text>
                   <Text variant="caption" tone="muted" className="mt-1">
                     Cada ponto é uma marca isolada; a linha serve apenas como
@@ -775,87 +824,34 @@ export function ComponentsPage() {
                 </Card>
 
                 <Card className="min-w-0">
-                  <Text variant="label">Gráfico de setores</Text>
+                  <Text variant="label">Gráfico de pizza reutilizável</Text>
                   <Text variant="caption" tone="muted" className="mt-1">
-                    Os setores compartilham o mesmo SVG, mas cada um continua
-                    sendo um componente independente.
+                    A abertura circular revela os setores. A legenda compacta e
+                    a seleção persistente são compartilhadas com o dashboard.
                   </Text>
-                  <div className="mt-5 grid items-center gap-5 sm:grid-cols-[13rem_1fr]">
-                    <div className="relative mx-auto size-52">
-                      <svg
-                        viewBox="0 0 200 200"
-                        className="size-full"
-                        aria-label="Ferramentas de IA utilizadas"
-                      >
-                        {sectorData.map((sector) =>
-                          tooltipsEnabled ? (
-                            <Tooltip<SVGPathElement>
-                              key={sector.label}
-                              content={
-                                <TooltipDetails
-                                  label={sector.label}
-                                  value={sector.value}
-                                  detail={sector.detail}
-                                />
-                              }
-                            >
-                              {(triggerProps) => (
-                                <ChartSector
-                                  {...sector}
-                                  aria-label={`${sector.label}: ${sector.value}`}
-                                  {...triggerProps}
-                                />
-                              )}
-                            </Tooltip>
-                          ) : (
-                            <ChartSector key={sector.label} {...sector} />
-                          ),
-                        )}
-                      </svg>
-                      <span className="pointer-events-none absolute inset-0 grid place-items-center text-center">
-                        <span>
-                          <Text variant="data" className="text-2xl">
-                            964
-                          </Text>
-                          <Text variant="caption" tone="muted">
-                            respostas
-                          </Text>
-                        </span>
-                      </span>
-                    </div>
-                    <div className="grid gap-3">
-                      {sectorData.map((sector) => (
-                        <div
-                          key={sector.label}
-                          className="flex items-center gap-3"
-                        >
-                          <span
-                            className={cn("size-2.5 rounded-full", {
-                              "bg-brand-700": sector.tone === "brand",
-                              "bg-brand-500": sector.tone === "warm",
-                              "bg-positive": sector.tone === "positive",
-                              "bg-brand-200": sector.tone === "soft",
-                            })}
-                          />
-                          <Text
-                            as="span"
-                            variant="caption"
-                            className="flex-1 font-medium"
-                          >
-                            {sector.label}
-                          </Text>
-                          <Text
-                            as="span"
-                            variant="caption"
-                            tone="muted"
-                            className="tabular-nums"
-                          >
-                            {sector.value}
-                          </Text>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                  <PieChart
+                    className="mt-5"
+                    data={[
+                      { label: "ChatGPT", value: 608, tone: "brand" },
+                      { label: "Gemini", value: 206, tone: "warm" },
+                      { label: "Copilot", value: 84, tone: "positive" },
+                      { label: "Outras", value: 66, tone: "soft" },
+                    ]}
+                    ariaLabel="Ferramentas de IA utilizadas"
+                  />
+                </Card>
+                <Card className="min-w-0 overflow-hidden xl:col-span-2">
+                  <Text variant="label">Boxplot reutilizável</Text>
+                  <Text variant="caption" tone="muted" className="mt-1">
+                    Mínimo, extensão até o máximo e caixa aparecem em sequência.
+                    Clique nas medidas para fixar o tooltip.
+                  </Text>
+                  <BoxplotChart
+                    className="mt-5"
+                    data={{ minimum: 16, firstQuartile: 19, median: 22, thirdQuartile: 27, maximum: 45 }}
+                    xLabel="Idade (anos)"
+                    ariaLabel="Distribuição de idades em boxplot"
+                  />
                 </Card>
               </div>
             </ShowcaseSection>
@@ -901,36 +897,41 @@ export function ComponentsPage() {
                     </Button>
                   </div>
                 </Card>
-                <Card padding="sm" className="min-w-0">
-                  <nav className="grid gap-1" aria-label="Exemplo de navegação">
-                    <NavigationItem
-                      label="Visão geral"
-                      icon={LayoutDashboard}
-                      href="#navigation"
-                      active
+                <Card padding="none" className="min-w-0 overflow-hidden">
+                  <div className="h-[28rem]">
+                    <DashboardSidebar
+                      collapsed={dashboardSidebarCollapsed}
+                      onToggle={() =>
+                        setDashboardSidebarCollapsed((collapsed) => !collapsed)
+                      }
+                      footer="Pesquisa sobre tecnologia"
+                      items={[
+                        {
+                          label: "Visão geral",
+                          icon: LayoutDashboard,
+                          to: "#navigation",
+                          active: true,
+                        },
+                        {
+                          label: "Perguntas",
+                          icon: CircleHelp,
+                          to: "#navigation",
+                          count: 28,
+                        },
+                        {
+                          label: "Exportar",
+                          icon: Download,
+                          to: "#navigation",
+                          disabled: true,
+                        },
+                        {
+                          label: "Enviar outra planilha",
+                          icon: Upload,
+                          to: "#navigation",
+                        },
+                      ]}
                     />
-                    <NavigationItem
-                      label="Perguntas"
-                      icon={CircleHelp}
-                      href="#navigation"
-                      count={28}
-                    />
-                    <NavigationItem
-                      label="Filtros"
-                      icon={Filter}
-                      href="#navigation"
-                    />
-                    <NavigationItem
-                      label="Comparações"
-                      icon={ChartNoAxesColumnIncreasing}
-                      href="#navigation"
-                    />
-                    <NavigationItem
-                      label="Exportar"
-                      icon={Download}
-                      href="#navigation"
-                    />
-                  </nav>
+                  </div>
                 </Card>
               </div>
             </ShowcaseSection>

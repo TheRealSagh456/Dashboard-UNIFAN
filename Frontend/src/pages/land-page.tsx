@@ -11,7 +11,7 @@ const HeroScene = lazy(() =>
   })),
 );
 
-export function HomePage() {
+export function LandPage() {
   const navigate = useNavigate();
 
   return (

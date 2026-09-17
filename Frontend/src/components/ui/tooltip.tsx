@@ -27,6 +27,7 @@ export type TooltipTriggerProps<T extends Element> = {
   "aria-describedby": string | undefined;
   onMouseEnter: MouseEventHandler<T>;
   onMouseLeave: MouseEventHandler<T>;
+  onClick: MouseEventHandler<T>;
   onFocus: FocusEventHandler<T>;
   onBlur: FocusEventHandler<T>;
   onKeyDown: KeyboardEventHandler<T>;
@@ -38,6 +39,8 @@ type TooltipProps<T extends Element> = {
   placement?: TooltipPlacement;
   className?: string;
   disabled?: boolean;
+  pinned?: boolean;
+  suppressTransient?: boolean;
 };
 
 const placementStyles: Record<TooltipPlacement, string> = {
@@ -91,9 +94,13 @@ export function Tooltip<T extends Element>({
   placement = "top",
   className,
   disabled = false,
+  pinned = false,
+  suppressTransient = false,
 }: TooltipProps<T>) {
   const tooltipId = useId();
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
 
   useEffect(() => {
     if (!anchorRect) return;
@@ -108,8 +115,9 @@ export function Tooltip<T extends Element>({
     };
   }, [anchorRect]);
 
-  const openTooltip = (target: T) => {
+  const openTooltip = (target: T, transient = true) => {
     if (disabled) return;
+    if (transient && suppressTransient) return;
 
     const rect = target.getBoundingClientRect();
     const resolvedPlacement = resolvePlacement(rect, placement);
@@ -126,18 +134,29 @@ export function Tooltip<T extends Element>({
 
   const triggerProps: TooltipTriggerProps<T> = {
     tabIndex: disabled ? -1 : 0,
-    "aria-describedby": anchorRect ? tooltipId : undefined,
-    onMouseEnter: (event) => openTooltip(event.currentTarget),
-    onMouseLeave: () => setAnchorRect(null),
-    onFocus: (event) => openTooltip(event.currentTarget),
-    onBlur: () => setAnchorRect(null),
+    "aria-describedby":
+      anchorRect && !disabled && (pinned || hovered || focused)
+        ? tooltipId
+        : undefined,
+    onMouseEnter: (event) => {
+      setHovered(true);
+      openTooltip(event.currentTarget);
+    },
+    onMouseLeave: () => setHovered(false),
+    onClick: (event) => openTooltip(event.currentTarget, false),
+    onFocus: (event) => {
+      setFocused(true);
+      openTooltip(event.currentTarget);
+    },
+    onBlur: () => setFocused(false),
     onKeyDown: (event) => {
       if (event.key === "Escape") setAnchorRect(null);
     },
   };
 
+  const visible = !disabled && (pinned || hovered || focused);
   const resolvedPlacement = anchorRect?.placement ?? placement;
-  const position = anchorRect
+  const position = anchorRect && visible
     ? getPosition(anchorRect, resolvedPlacement)
     : null;
 
