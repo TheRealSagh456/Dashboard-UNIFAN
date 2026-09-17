@@ -1,6 +1,6 @@
 import { cva, type VariantProps } from 'class-variance-authority'
 import { LoaderCircle } from 'lucide-react'
-import type { ButtonHTMLAttributes } from 'react'
+import { forwardRef, type ButtonHTMLAttributes } from 'react'
 import { cn } from '../../lib/cn'
 
 const buttonStyles = cva(
@@ -9,7 +9,7 @@ const buttonStyles = cva(
     variants: {
       variant: {
         primary:
-          'border-brand-600 bg-brand-600 text-white shadow-[0_8px_22px_rgb(169_83_31_/_0.2)] hover:-translate-y-0.5 hover:border-brand-700 hover:bg-brand-700',
+          'border-brand-600 bg-brand-600 text-white shadow-[var(--shadow-action)] hover:-translate-y-0.5 hover:border-brand-700 hover:bg-brand-700',
         secondary:
           'border-brand-200 bg-brand-100 text-brand-800 hover:border-brand-500 hover:bg-brand-200',
         outline:
@@ -41,27 +41,33 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> &
     loading?: boolean
   }
 
-export function Button({
-  className,
-  variant,
-  size,
-  fullWidth,
-  loading = false,
-  disabled,
-  children,
-  type = 'button',
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      type={type}
-      className={cn(buttonStyles({ variant, size, fullWidth }), className)}
-      disabled={disabled || loading}
-      aria-busy={loading || undefined}
-      {...props}
-    >
-      {loading && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
-      {children}
-    </button>
-  )
-}
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  function Button(
+    {
+      className,
+      variant,
+      size,
+      fullWidth,
+      loading = false,
+      disabled,
+      children,
+      type = 'button',
+      ...props
+    },
+    ref,
+  ) {
+    return (
+      <button
+        ref={ref}
+        type={type}
+        className={cn(buttonStyles({ variant, size, fullWidth }), className)}
+        disabled={disabled || loading}
+        aria-busy={loading || undefined}
+        {...props}
+      >
+        {loading && <LoaderCircle className="size-4 animate-spin" aria-hidden="true" />}
+        {children}
+      </button>
+    )
+  },
+)

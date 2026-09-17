@@ -155,7 +155,7 @@ export function CartesianChart({
                 <text x={margin.left - 12} y={point.y + 4} textAnchor="end" className="fill-ink text-[11px]">
                   {point.item.label.length > 22 ? `${point.item.label.slice(0, 20)}…` : point.item.label}
                 </text>
-                <Tooltip<SVGPathElement> pinned={selected} suppressTransient={selectedIndex !== null && !selected} content={<TooltipContent item={point.item} />}>
+                <Tooltip<SVGPathElement> pinned={selected} content={<TooltipContent item={point.item} />}>
                   {(triggerProps) => (
                     <path
                       {...triggerProps}
@@ -176,7 +176,7 @@ export function CartesianChart({
             {points.map((point, index) => {
               const selected = selectedIndex === index;
               return (
-                <Tooltip<SVGCircleElement> key={point.item.label} pinned={selected} suppressTransient={selectedIndex !== null && !selected} content={<TooltipContent item={point.item} />}>
+                <Tooltip<SVGCircleElement> key={point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
                   {(triggerProps) => (
                     <circle
                       {...triggerProps}
@@ -203,7 +203,7 @@ export function CartesianChart({
             const barWidth = Math.max(3, band - gap);
             const x = margin.left + band * index + gap / 2;
             return (
-              <Tooltip<SVGPathElement> key={point.item.label} pinned={selected} suppressTransient={selectedIndex !== null && !selected} content={<TooltipContent item={point.item} />}>
+              <Tooltip<SVGPathElement> key={point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
                 {(triggerProps) => (
                   <path
                     {...triggerProps}

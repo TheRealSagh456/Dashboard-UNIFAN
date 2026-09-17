@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Button,
   Card,
+  ImportLoadingOverlay,
   QuestionFilters,
   QuestionsGrid,
   Stepper,
@@ -32,6 +33,7 @@ import type {
   TipoVariavel,
 } from "../components/ui/question-grid";
 import { cn } from "../lib/cn";
+import { mockRequestDelay } from "../services/api";
 
 const perguntasMockadas: PerguntaRow[] = [
   {
@@ -146,6 +148,7 @@ export function ImportPage() {
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [arrastandoArquivo, setArrastandoArquivo] = useState(false);
   const [linkPlanilha, setLinkPlanilha] = useState("");
+  const [processandoImportacao, setProcessandoImportacao] = useState(false);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
   const contadorArrasteRef = useRef(0);
   const navigate = useNavigate();
@@ -246,6 +249,23 @@ export function ImportPage() {
     if (!linkPlanilha.trim()) return;
   }
 
+  async function avancarEtapa() {
+    if (etapa === 1) {
+      setProcessandoImportacao(true);
+      await mockRequestDelay();
+      setProcessandoImportacao(false);
+      setEtapa(2);
+      return;
+    }
+
+    if (etapa === 2) {
+      setEtapa(3);
+      return;
+    }
+
+    navigate("/home/pesquisa-tecnologia-2026");
+  }
+
   return (
     <main
       className="relative min-h-screen bg-canvas px-4 py-8 sm:px-6 lg:py-12"
@@ -254,6 +274,7 @@ export function ImportPage() {
       onDragLeave={encerrarArraste}
       onDrop={soltarArquivo}
     >
+      {processandoImportacao && <ImportLoadingOverlay />}
       <div
         className={cn(
           "pointer-events-none fixed inset-0 z-40 bg-ink/30 opacity-0 backdrop-blur-[1px] transition-opacity duration-200",
@@ -481,12 +502,7 @@ export function ImportPage() {
               <LucideArrowLeft className="size-4" />
               Voltar
             </Button>
-            <Button
-              onClick={() => {
-                if (etapa < 3) setEtapa((current) => current + 1);
-                if (etapa === 3) navigate("/home/pesquisa-tecnologia-2026");
-              }}
-            >
+            <Button disabled={processandoImportacao} onClick={avancarEtapa}>
               {etapa === 3 ? "Finalizar" : "Continuar"}
               {etapa < 3 ? (
                 <LucideArrowRight className="size-4" />

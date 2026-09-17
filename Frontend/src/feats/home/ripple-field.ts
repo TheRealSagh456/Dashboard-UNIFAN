@@ -4,7 +4,7 @@ import { sampleWaveHeight } from "./wave-field";
 export const RIPPLE_SETTINGS = {
   capacity: 20,
   speed: 3,
-  color: "#e7a878", // Pêssego original, antes de brand-500.
+  color: "#ffffff",
   intensity: 3.8, // Emissão acima de 1 para um núcleo luminoso após o tone mapping.
   coreWidth: 0.085,
   haloWidth: 0.55,
@@ -27,7 +27,7 @@ export const SPARK_SETTINGS = {
   particlesPerBurst: 14,
   duration: 0.78,
   gravity: 4.8,
-  color: "#fff3df",
+  color: "#ffffff",
 } as const;
 
 interface RippleVector {

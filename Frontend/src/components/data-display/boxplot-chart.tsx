@@ -82,7 +82,6 @@ export function BoxplotChart({
           <Tooltip<SVGRectElement>
             key={label}
             pinned={selectedIndex === index}
-            suppressTransient={selectedIndex !== null && selectedIndex !== index}
             content={
               <span className="grid gap-0.5">
                 <span className="font-semibold">{label}</span>

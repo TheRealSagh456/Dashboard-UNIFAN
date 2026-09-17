@@ -155,14 +155,18 @@ function addWaveDeformation(
     `wave-glow-v4-${surface}-${waveVertexFunctions}-${glowFragmentFunctions}`;
 }
 
-export function createWaveMaterials(mask: Texture, compact: boolean) {
+export function createWaveMaterials(
+  mask: Texture,
+  compact: boolean,
+  darkTheme = false,
+) {
   const uniforms = createWaveUniforms();
   const surface = new MeshPhysicalMaterial({
-    color: "#c56e32", // --color-brand-500 em index.css.
+    color: darkTheme ? "#0874f9" : "#c56e32", // --color-brand-500.
     roughness: 0.88,
     metalness: 0,
     sheen: 0.55,
-    sheenColor: "#fff3e8", // --color-brand-50.
+    sheenColor: darkTheme ? "#78b8ff" : "#fff3e8",
     sheenRoughness: 0.85,
     specularIntensity: 0.25,
     side: FrontSide,
@@ -171,7 +175,7 @@ export function createWaveMaterials(mask: Texture, compact: boolean) {
     polygonOffsetUnits: 1,
   });
   const particles = new PointsMaterial({
-    color: "#f8dfca", // --color-brand-100.
+    color: darkTheme ? "#c4e0ff" : "#f8dfca",
     vertexColors: true,
     alphaMap: mask,
     size: compact ? 0.048 : 0.034,

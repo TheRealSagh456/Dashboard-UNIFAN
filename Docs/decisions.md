@@ -139,6 +139,53 @@ realizada e suas consequências.
   compacta e responsiva; o boxplot é compartilhado entre dashboard e catálogo;
   todas as novas animações respeitam a preferência por movimento reduzido.
 
+## DEC-012 - Tema e estados assíncronos na V5
+
+- **Situação:** aceita
+- **Decisão:** aplicar o tema por tokens CSS globais; usar a preferência do
+  sistema somente quando ainda não houver escolha salva; persistir a seleção no
+  navegador; representar a importação com bloqueio de tela e as navegações do
+  dashboard com skeletons posicionais.
+- **Motivo:** permitir que componentes e gráficos existentes herdem a nova
+  paleta sem receber propriedades de tema individualmente e tornar perceptíveis
+  as operações assíncronas sem alterar a estrutura final das páginas.
+- **Consequências:** o atributo `data-theme` do elemento raiz controla os tokens;
+  o botão de tema fica fixo no canto superior direito; a cena de ondas possui
+  materiais próprios para cada tema; a preferência manual prevalece sobre
+  mudanças posteriores do sistema; e o atraso demonstrativo de 2 segundos fica
+  centralizado em `Frontend/src/services/api.ts` para remoção futura.
+
+## DEC-013 - Substituição da pesquisa atual na V5
+
+- **Situação:** aceita
+- **Decisão:** exigir confirmação antes de substituir a pesquisa e executar a
+  limpeza exclusivamente pelo endpoint `DELETE /api/pesquisas/atual`, seguindo
+  o fluxo route → controller → service.
+- **Motivo:** impedir descarte acidental e manter regras de persistência fora do
+  frontend.
+- **Consequências:** a navegação para `/import` acontece somente após sucesso da
+  API; falhas permanecem visíveis no modal; o contrato está documentado em
+  `Docs/api.md`; e a futura exclusão transacional no SQLite ficará restrita ao
+  serviço, sem alterar a interface HTTP.
+
+## DEC-014 - Entrada da Home, paleta e exportação na V6
+
+- **Situação:** aceita
+- **Decisão:** revelar primeiro a cena de ondas em 900 ms e depois o conteúdo
+  introdutório em 700 ms, com deslocamento vertical de 24 px; usar azuis mais
+  vivos e fundos azul-marinho mais profundos no tema escuro; manter as coroas de
+  clique brancas nos dois temas; e centralizar as opções de exportação em um
+  modal único.
+- **Motivo:** evitar a entrada abrupta da cena, reforçar a identidade visual e
+  oferecer exportações consistentes sem espalhar regras de dados pelo frontend.
+- **Consequências:** a câmera passa a usar enquadramento mais fechado para ocultar
+  as bordas da malha; movimento reduzido apresenta imediatamente o estado final;
+  PDF e JPEG são capturados no navegador; XLSX e CSV são gerados por
+  `GET /api/exportacoes/dados`; CSV representa uma pergunta; XLSX também pode
+  representar a pesquisa inteira; o dashboard completo em JPEG é uma única
+  imagem longa; e exportações visuais omitem a navegação da aplicação, preservam
+  o estado final dos gráficos e evitam uma última página quase vazia no PDF.
+
 ## Decisões pendentes
 
 | Tema | Definição necessária | Impacto principal |
@@ -147,5 +194,4 @@ realizada e suas consequências.
 | Rótulo das classes | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`. | Interface e documentação estatística |
 | Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição |
 | Classes de Sturges | Definir o arredondamento dos limites das classes. | Histograma, ogivas e tabelas |
-| Exportação JPEG | Confirmar se o dashboard completo precisa ser uma única imagem. | Interface e exportação |
 | Limites de arquivo | Definir tamanho máximo e quantidade prática de respostas. | Validação e desempenho |

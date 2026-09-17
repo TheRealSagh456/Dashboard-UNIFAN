@@ -15,6 +15,7 @@ import {
   Mesh,
 } from "three";
 import { WAVE_SETTINGS } from "./wave-field";
+import { useTheme } from "../../providers/theme-context";
 import { createWaveMaterials } from "./wave-materials";
 import type { WaveUniforms } from "./wave-materials";
 import { createWaveRaycast } from "./wave-raycast";
@@ -30,7 +31,24 @@ import {
   updateSparkBuffers,
 } from "./ripple-field";
 
-const BACKGROUND = "#fae8d5";
+const SCENE_PALETTE = {
+  light: {
+    background: "#fae8d5",
+    sky: "#fff7f2",
+    ground: "#b36742",
+    secondaryLight: "#ffede3",
+    veil:
+      "linear-gradient(180deg, #fae8d5 0%, #fae8d5d9 20%, #fae8d526 49%, transparent 68%), radial-gradient(ellipse at 18% 38%, #fae8d5a6, #fae8d54d 30%, transparent 65%)",
+  },
+  dark: {
+    background: "#050b18",
+    sky: "#a5d0ff",
+    ground: "#010817",
+    secondaryLight: "#176ed8",
+    veil:
+      "linear-gradient(180deg, #050b18 0%, #050b18e3 20%, #050b1838 49%, transparent 68%), radial-gradient(ellipse at 18% 38%, #07152db8, #07152d5c 30%, transparent 65%)",
+  },
+} as const;
 
 function createParticleMask() {
   const size = 32;
@@ -167,8 +185,8 @@ function CameraRig() {
 
   useEffect(() => {
     const offset = compact ? 2.1 : 0;
-    camera.position.set(offset, 3.3, 8.8);
-    camera.lookAt(offset, -0.1, -3.2);
+    camera.position.set(offset, 3, 7.35);
+    camera.lookAt(offset, -0.45, -4.35);
     camera.updateProjectionMatrix();
   }, [camera, compact]);
 
@@ -178,9 +196,11 @@ function CameraRig() {
 function LearningPlane({
   paused,
   reducedMotion,
+  darkTheme,
 }: {
   paused: boolean;
   reducedMotion: boolean;
+  darkTheme: boolean;
 }) {
   const compact = useThree((state) => state.size.width < 640);
   const geometry = useMemo(() => createSurfaceGeometry(compact), [compact]);
@@ -192,8 +212,8 @@ function LearningPlane({
   const sparkGeometry = useMemo(() => createSparkGeometry(), []);
   const sparkMaterial = useMemo(() => createSparkMaterial(), []);
   const materials = useMemo(
-    () => createWaveMaterials(particleMask, compact),
-    [particleMask, compact],
+    () => createWaveMaterials(particleMask, compact, darkTheme),
+    [particleMask, compact, darkTheme],
   );
   const raycast = useMemo(
     () => createWaveRaycast(materials.uniforms),
@@ -313,12 +333,16 @@ function LearningPlane({
   );
 }
 
-export function HeroScene() {
+export function HeroScene({ onReady }: { onReady?: () => void }) {
+  const { theme } = useTheme();
+  const palette = SCENE_PALETTE[theme];
+  const darkTheme = theme === "dark";
   const reducedMotion = useReducedMotion() === true;
   const [pageVisible, setPageVisible] = useState(
     () => document.visibilityState !== "hidden",
   );
   const [inView, setInView] = useState(true);
+  const [sceneVisible, setSceneVisible] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const paused = !pageVisible || !inView;
 
@@ -336,25 +360,38 @@ export function HeroScene() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!sceneVisible || !onReady) return;
+    const timer = window.setTimeout(onReady, reducedMotion ? 0 : 900);
+    return () => window.clearTimeout(timer);
+  }, [onReady, reducedMotion, sceneVisible]);
+
   return (
     <div
       ref={containerRef}
-      className="absolute inset-0 z-0"
-      style={{ background: BACKGROUND }}
+      className={`absolute inset-0 z-0 transition-opacity duration-[900ms] ease-out motion-reduce:transition-none ${
+        sceneVisible ? "opacity-100" : "opacity-0"
+      }`}
+      style={{ background: palette.background }}
       aria-hidden="true"
     >
       <Canvas
-        camera={{ position: [0, 3.8, 8.8], fov: 38, near: 0.1, far: 65 }}
+        key={theme}
+        camera={{ position: [0, 3, 7.35], fov: 32, near: 0.1, far: 65 }}
+        onCreated={() => window.requestAnimationFrame(() => setSceneVisible(true))}
         frameloop={reducedMotion || paused ? "demand" : "always"}
         dpr={1}
         gl={{ antialias: true }}
         fallback={
-          <div className="h-full w-full" style={{ background: BACKGROUND }} />
+          <div
+            className="h-full w-full"
+            style={{ background: palette.background }}
+          />
         }
       >
-        <color attach="background" args={[BACKGROUND]} />
-        <fog attach="fog" args={[BACKGROUND, 9, 24]} />
-        <hemisphereLight args={["#fff7f2", "#b36742", 0.8]} />
+        <color attach="background" args={[palette.background]} />
+        <fog attach="fog" args={[palette.background, 9, 24]} />
+        <hemisphereLight args={[palette.sky, palette.ground, 0.8]} />
         <directionalLight
           position={[-6, 9, -3]}
           color="#ffffff"
@@ -362,18 +399,21 @@ export function HeroScene() {
         />
         <directionalLight
           position={[5, 3, 5]}
-          color="#ffede3"
+          color={palette.secondaryLight}
           intensity={0.7}
         />
 
         <CameraRig />
-        <LearningPlane reducedMotion={reducedMotion} paused={paused} />
+        <LearningPlane
+          reducedMotion={reducedMotion}
+          paused={paused}
+          darkTheme={darkTheme}
+        />
       </Canvas>
       <div
         className="pointer-events-none absolute inset-0"
         style={{
-          background:
-            "linear-gradient(180deg, #fae8d5 0%, #fae8d5d9 20%, #fae8d526 49%, transparent 68%), radial-gradient(ellipse at 18% 38%, #fae8d5a6, #fae8d54d 30%, transparent 65%)",
+          background: palette.veil,
         }}
       />
     </div>

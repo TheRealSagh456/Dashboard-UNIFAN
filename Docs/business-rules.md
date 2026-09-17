@@ -18,8 +18,9 @@ backend após a integração da API.
   acentos.
 - A navegação lateral pode ser recolhida no desktop e aberta como painel em
   telas menores.
-- `Exportar` permanece indisponível até sua implementação, enquanto `Enviar
-  outra planilha` volta à importação para substituir o conjunto atual.
+- `Exportar` abre um modal de configuração sem alterar a rota atual. `Enviar
+  outra planilha` volta à importação para substituir o conjunto atual após
+  confirmação e limpeza pela API.
 
 ## Visão geral
 
@@ -79,7 +80,9 @@ comum não é usado porque pode gerar intervalos pouco legíveis.
 No hover ou foco, o item ativo exibe tooltip e uma linha-guia pontilhada apenas
 no eixo numérico. O clique fixa tooltip, linha-guia e cor selecionada. Clicar em
 outro item transfere a seleção; clicar fora do gráfico ou pressionar `Escape`
-limpa o estado. A interação também deve funcionar por teclado.
+limpa o estado. Enquanto uma seleção estiver fixada, o hover ou foco em outro
+item exibe um segundo tooltip temporário sem ocultar o tooltip selecionado. A
+interação também deve funcionar por teclado.
 
 Barras usam três níveis da paleta: claro no estado básico, intermediário no
 hover e forte na seleção. Elas têm espaçamento, contorno e base reta alinhada ao
@@ -128,6 +131,27 @@ Em telas largas, a distribuição deve caber na área disponível sem rolagem
 horizontal. Em telas menores, cada classe é apresentada como um card responsivo.
 Os títulos `fi`, `fi (acu)`, `fr`, `fr (acu)`, `fr%` e `fr% (acu)` devem expor
 suas definições em tooltip no hover e no foco de teclado.
+
+## Exportação
+
+- PDF e JPEG representam o conteúdo principal sem navegação lateral, cabeçalho
+  móvel ou controles de troca de página. O escopo completo inclui toda a altura
+  renderizada; em JPEG, o resultado é uma única imagem longa.
+- O PDF divide automaticamente capturas realmente longas em páginas A4,
+  preservando a largura e a ordem visual. Quando sobraria apenas um pequeno
+  fragmento isolado na última folha, a captura recebe uma redução limitada para
+  evitar uma página quase vazia.
+- XLSX permite exportar a pesquisa completa ou apenas uma pergunta. A pesquisa
+  completa preserva as colunas e respostas da fonte importada.
+- XLSX e CSV de uma pergunta contêm duas colunas: `ID da resposta` e a pergunta
+  selecionada. CSV fica restrito a esse escopo para evitar um segundo formato
+  redundante da pesquisa inteira.
+- A seleção e geração dos arquivos de dados pertencem ao backend. O frontend
+  envia somente formato, escopo e identificador da pergunta para a API.
+- PDF e JPEG são capturas da interface e, por isso, são produzidos no frontend
+  com o tema e a página que o usuário está visualizando.
+- Formato, escopo e pergunta devem ser validados novamente pelo backend; valores
+  inválidos usam a estrutura de erro padrão da API.
 
 ## Contrato esperado do backend
 

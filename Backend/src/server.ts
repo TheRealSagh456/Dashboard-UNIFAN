@@ -1,15 +1,20 @@
 import fastify from 'fastify'
 import dotenv from 'dotenv'
+import { pesquisasRoutes } from './routes/pesquisas.routes.js'
+import { exportacoesRoutes } from './routes/exportacoes.routes.js'
 
 dotenv.config()
 
 const app = fastify({logger: true})
 
 app.get('/health', async () => {
-    return {status: 'vivinho da silva'}
+    return {data: {status: 'vivinho da silva'}}
 })
 
-const PORT = Number(process.env.PORT) ?? 3333
+await app.register(pesquisasRoutes)
+await app.register(exportacoesRoutes)
+
+const PORT = Number(process.env.PORT ?? 3333)
 
 app.listen({port: PORT, host: '0.0.0.0'}, (err) => {
     if(err) {

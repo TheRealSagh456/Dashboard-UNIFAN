@@ -5,7 +5,8 @@ catálogo interativo está disponível na rota `/components` da aplicação fron
 
 ## Direção visual
 
-- Paleta quente baseada em creme, papel e terracota, com grafite para texto.
+- Tema claro baseado em creme, papel, terracota e grafite; tema escuro com
+  preto, cinzas, azul vivo (`#0874f9`) e azul-marinho profundo (`#050b18`).
 - Tipografia serifada para títulos e números de destaque; fonte sem serifa para
   leitura, rótulos e controles.
 - Bordas suaves, sombras discretas e estados de interação claramente visíveis.
@@ -14,11 +15,80 @@ catálogo interativo está disponível na rota `/components` da aplicação fron
 Os tokens estão declarados em `Frontend/src/index.css` por meio do tema do
 Tailwind CSS.
 
+## Tema escuro e preferência do usuário
+
+O `ThemeProvider` escolhe o tema inicial nesta ordem:
+
+1. valor `light` ou `dark` salvo em `localStorage` sob a chave `unifan-theme`;
+2. preferência do sistema informada por `prefers-color-scheme`.
+
+Enquanto não houver escolha manual, mudanças na preferência do sistema também
+atualizam a aplicação. Ao usar o botão fixo no canto superior direito, a escolha
+é persistida e passa a prevalecer. O provider escreve `data-theme` no elemento
+`html`; `Frontend/src/index.css` redefine os mesmos tokens de cor e sombra para
+o tema escuro. Assim, classes como `bg-paper`, `text-ink` e `border-line`
+continuam iguais nos componentes, mas resolvem para outra paleta globalmente.
+
+A cena da página inicial acompanha o contexto de tema. No modo escuro, o fundo e
+as ondas usam preto, azul e partículas azul-claras. As coroas e faíscas iniciadas
+por clique são brancas nos dois temas.
+
+## Carregamentos da V5
+
+O atraso demonstrativo é `2000 ms` e fica em
+`Frontend/src/services/api.ts`. Ele permanece intencionalmente no projeto para
+inspeção visual.
+
+- a importação bloqueia e escurece a tela, apresenta spinner e alterna as
+  mensagens a cada 3 segundos;
+- visão geral, catálogo e análise individual usam skeletons que preservam a
+  estrutura aproximada do conteúdo final durante trocas de rota;
+- o skeleton respeita `prefers-reduced-motion`, removendo o brilho animado;
+- a limpeza da pesquisa usa o estado de carregamento do botão dentro do modal e
+  mantém qualquer erro da API visível para nova tentativa.
+
+Na V5, `Enviar outra planilha` não navega imediatamente. O item abre uma
+confirmação; ao aceitar, o frontend chama `DELETE /api/pesquisas/atual` e só
+então segue para `/import`.
+
+## Animações e exportação da V6
+
+A Home revela a cena 3D com um fade de 900 ms. Somente depois dessa etapa o
+bloco introdutório aparece em 700 ms, combinando fade com subida de 24 px. Uma
+salvaguarda libera o conteúdo após 1.800 ms caso o Canvas não sinalize prontidão.
+Com `prefers-reduced-motion`, cena e conteúdo assumem o estado final sem
+transição. A câmera mais fechada evita que as bordas da malha entrem no quadro.
+
+O item `Exportar` da `DashboardSidebar` abre `ExportDialog`, renderizado em
+portal. O modal oferece PDF, JPEG, XLSX e CSV e altera os controles conforme o
+formato:
+
+- PDF/JPEG: tela atual ou dashboard completo;
+- XLSX: pesquisa completa ou pergunta específica;
+- CSV: pergunta específica, com o seletor de escopo bloqueado;
+- ao exportar uma pergunta, o seletor inicia na pergunta aberta, quando houver.
+
+`Frontend/src/services/exportacoes.ts` captura os conteúdos visuais com
+`html-to-image` e monta PDFs paginados com `jsPDF`. Durante a captura, transições,
+animações e cursor de texto são desativados para produzir uma imagem estável; os
+gráficos são fixados no último quadro da animação para preservar linhas, pontos e
+revelações circulares. A captura também remove menus e controles de navegação,
+usa somente a altura real do conteúdo e reduz de forma limitada a imagem quando
+isso evita uma última página quase vazia. Os formatos de dados chamam
+`GET /api/exportacoes/dados`; a regra de seleção das
+colunas e a geração do arquivo permanecem no backend. O atraso mockado de 2
+segundos também é aplicado à chamada de dados para manter o estado de loading
+visível durante o desenvolvimento.
+
 ## Componentes disponíveis
 
 O índice `Frontend/src/components/index.ts` exporta:
 
 - `Button`: variantes de ação, tamanhos, largura total e carregamento;
+- `ThemeToggle`: controle global fixo para alternar os temas claro e escuro;
+- `Skeleton`: placeholders animados nas variantes de texto e card;
+- `ConfirmationDialog`: confirmação modal acessível para ações destrutivas;
+- `ImportLoadingOverlay`: bloqueio visual da importação com spinner e mensagens;
 - `Text`: hierarquia tipográfica e tons semânticos;
 - `Card`: superfícies elevada, contornada, tonal e interativa;
 - `Badge`: indicadores neutro, de marca e semânticos;
@@ -118,8 +188,9 @@ centro do espaço entre os metadados.
 
 A `DashboardSidebar` permanece disponível nas três telas. No desktop, pode ser
 recolhida até a faixa de ícones e guarda essa preferência no navegador. Em telas
-menores, transforma-se em um painel aberto pelo cabeçalho. `Exportar` permanece
-desabilitado nesta etapa e `Enviar outra planilha` retorna à importação.
+menores, transforma-se em um painel aberto pelo cabeçalho. `Exportar` abre o
+modal configurável da V6 e `Enviar outra planilha` pede confirmação, limpa a
+pesquisa pela API e então retorna à importação.
 
 Cada análise apresenta somente as medidas e visualizações compatíveis com o tipo
 da variável. A visualização `Pizza` usa o `PieChart`; o `DonutChart` permanece na
@@ -132,9 +203,11 @@ marcas em sequência; `prefers-reduced-motion` remove essa animação.
 
 As marcas gráficas usam três níveis visuais: base clara, hover intermediário e
 seleção forte. O clique fixa tooltip e seleção; outro item transfere a seleção,
-enquanto clique externo ou `Escape` limpa o estado. Barras verticais têm somente
-os cantos superiores arredondados, barras horizontais somente a extremidade de
-valor, e os eixos são desenhados acima das bases.
+enquanto clique externo ou `Escape` limpa o estado. Uma seleção fixada continua
+visível quando outro item recebe hover ou foco, permitindo dois tooltips
+simultâneos. Barras verticais têm somente os cantos superiores arredondados,
+barras horizontais somente a extremidade de valor, e os eixos são desenhados
+acima das bases.
 
 Na V4, a seleção tem prioridade sobre hover e foco, sem contorno preto ao
 clicar. A navegação por teclado conserva um indicador na paleta do projeto.
@@ -236,8 +309,9 @@ referência. A cena é decorativa e não representa resultados da pesquisa.
   índices, desenhando cada ponto uma única vez, com deslocamento local de `0.025`
   para reduzir conflito de profundidade. Suas posições têm pequena irregularidade
   fixa para suavizar a aparência de grade.
-- Câmera em `[0, 3.3, 8.8]`, olhando para `[0, -0.1, -3.2]`, com `fov=38`:
-  aproximadamente 16 graus abaixo da horizontal. Em larguras menores que
+- Câmera em `[0, 3, 7.35]`, olhando para `[0, -0.45, -4.35]`, com `fov=32`.
+  O enquadramento mais fechado mantém a malha além das bordas visíveis. Em
+  larguras menores que
   640 px, câmera e alvo se deslocam `2.1` unidades no eixo X para manter a crista
   direita no enquadramento.
 - Fundo e névoa usam `#fae8d5`; a névoa vai de 9 a 24 unidades de profundidade
@@ -270,7 +344,8 @@ continua interceptando seus próprios cliques.
 
 - Velocidade de propagação: 3 unidades/s.
 - Núcleo com largura de 0,085 unidade e halo com largura de 0,55 unidade.
-- Cor base `#e7a878`, intensidade 3,8 e força relativa do halo 0,32.
+- Cor base branca (`#ffffff`) nos dois temas, intensidade 3,8 e força relativa
+  do halo 0,32.
 - Entrada suave de 0,12 s, duração de 4,8 s, amortecimento exponencial de 0,24/s
   e desaparecimento suave nos últimos 1,15 s.
 - Até 20 efeitos simultâneos. Com o conjunto cheio, cliques adicionais são
@@ -335,8 +410,7 @@ em carregamento separado com `lazy`/`Suspense` e fundo creme durante a espera.
 Com `prefers-reduced-motion`, esta cena mantém uma pose estática e não aplica os
 impulsos de clique, colisões ou faíscas. O Canvas é decorativo (`aria-hidden`) e
 tem um fundo alternativo quando WebGL não está disponível. O conteúdo HTML fica
-em outra camada. Essas garantias dizem respeito à cena; as animações Motion do
-conteúdo da Home continuam como estavam nesta etapa.
+em outra camada e sua entrada também é instantânea nessa preferência.
 
 A propriedade `as` do componente `Text` é restrita a componentes compatíveis
 com atributos HTML. Isso evita conflito de tipagem com os elementos 3D que o
@@ -356,6 +430,7 @@ materiais.
 Na validação da integração, 6.724 amostras de altura, 1.200 amostras de brilho e
 675 raios passaram; o maior desvio de distância do raycast foi aproximadamente
 0,011 unidade. Esses testes não compilam GLSL em WebGL nem medem FPS. A inspeção
-visual da integração confirmou a Home, a navegação para `/import`, as três etapas,
-a busca, o filtro e o retorno à página inicial. O build mantém avisos para os
-chunks da cena e dos componentes acima de 500 kB, apesar do carregamento separado.
+visual da integração confirmou a ordem de entrada cena → conteúdo, o enquadramento
+sem bordas da malha, as coroas brancas nos dois temas, o modal em viewport
+estreito e as exportações CSV, JPEG e PDF. O build mantém avisos para os chunks da
+cena e dos componentes acima de 500 kB, apesar do carregamento separado.

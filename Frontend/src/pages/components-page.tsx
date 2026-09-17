@@ -34,6 +34,7 @@ import {
   NavigationItem,
   PieChart,
   QuestionFilters,
+  Skeleton,
   Stepper,
   Text,
   TextField,
@@ -577,6 +578,20 @@ export function ComponentsPage() {
                     Passe o cursor para conferir o estado de interação.
                   </Text>
                 </Card>
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-[0.8fr_1.2fr]">
+                <Card variant="outline">
+                  <Text variant="label">Skeleton de texto</Text>
+                  <div className="mt-4 space-y-3">
+                    <Skeleton className="w-4/5" />
+                    <Skeleton className="w-full" />
+                    <Skeleton className="w-3/5" />
+                  </div>
+                </Card>
+                <div>
+                  <Text variant="label">Skeleton de card</Text>
+                  <Skeleton variant="card" className="mt-3 min-h-36" />
+                </div>
               </div>
             </ShowcaseSection>
 

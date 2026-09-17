@@ -15,12 +15,13 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useLocation, useNavigate, useParams } from "react-router-dom";
 import {
   Badge,
   Button,
   Card,
+  ConfirmationDialog,
   DashboardSidebar,
   DonutChart,
   MetricCard,
@@ -38,9 +39,13 @@ import {
   type TipoGrafico,
   type TipoPergunta,
 } from "../feats/home/dashboard-data";
+import { HomeContentSkeleton } from "../feats/home/home-loading";
+import { ExportDialog } from "../feats/home/export-dialog";
 import { TabelaFrequencias } from "../feats/home/frequency-table";
 import { VisualizacaoPergunta } from "../feats/home/question-charts";
 import { cn } from "../lib/cn";
+import { MOCK_REQUEST_DELAY_MS } from "../services/api";
+import { limparPesquisaAtual } from "../services/pesquisas";
 
 const todasCategorias: CategoriaPergunta[] = [
   "Discreta",
@@ -137,7 +142,11 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
             Principais indicadores do arquivo processado em {pesquisaDemo.importadoEm}.
           </Text>
         </div>
-        <Button variant="outline" onClick={() => navigate(caminhoPerguntas(pesquisaId))}>
+        <Button
+          variant="outline"
+          data-export-exclude="true"
+          onClick={() => navigate(caminhoPerguntas(pesquisaId))}
+        >
           Ver todas as perguntas
           <ArrowRight className="size-4" aria-hidden="true" />
         </Button>
@@ -321,6 +330,7 @@ function AnalisePergunta({
     <main className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-10 lg:py-8">
       <Link
         to={caminhoPerguntas(pesquisaId)}
+        data-export-exclude="true"
         className="inline-flex items-center gap-2 text-sm font-semibold text-muted transition hover:text-brand-700"
       >
         <ArrowLeft className="size-4" aria-hidden="true" />
@@ -375,7 +385,10 @@ function AnalisePergunta({
 
         <TabelaFrequencias pergunta={pergunta} />
 
-        <div className="flex items-center justify-between gap-3">
+        <div
+          className="flex items-center justify-between gap-3"
+          data-export-exclude="true"
+        >
           {anterior ? (
             <Button variant="outline" onClick={() => navegar(anterior.id)}>
               <ArrowLeft className="size-4" aria-hidden="true" />
@@ -417,11 +430,19 @@ export function HomePage() {
     () => window.localStorage.getItem("dashboard-menu-recolhido") === "true",
   );
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
+  const [caminhoCarregado, setCaminhoCarregado] = useState<string | null>(null);
+  const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
+  const [exportacaoAberta, setExportacaoAberta] = useState(false);
+  const [limpandoPesquisa, setLimpandoPesquisa] = useState(false);
+  const [erroLimpeza, setErroLimpeza] = useState<string | null>(null);
+  const dashboardRootRef = useRef<HTMLDivElement>(null);
+  const dashboardContentRef = useRef<HTMLDivElement>(null);
   const pergunta = perguntaId
     ? perguntasDashboard.find((item) => item.id === perguntaId)
     : undefined;
   const emPerguntas = pathname.includes("/perguntas");
   const emCatalogo = emPerguntas && !perguntaId;
+  const conteudoCarregando = caminhoCarregado !== pathname;
   const itens: DashboardSidebarItem[] = [
     {
       label: "Visão geral",
@@ -439,8 +460,7 @@ export function HomePage() {
     {
       label: "Exportar",
       icon: Download,
-      to: "#",
-      disabled: true,
+      to: "#export",
     },
     {
       label: "Enviar outra planilha",
@@ -459,16 +479,81 @@ export function HomePage() {
 
   function navegar(to: string) {
     setMenuMobileAberto(false);
+    if (to === "#export") {
+      setExportacaoAberta(true);
+      return;
+    }
+    if (to === "/import") {
+      setErroLimpeza(null);
+      setConfirmacaoAberta(true);
+      return;
+    }
     navigate(to);
+  }
+
+  const fecharConfirmacao = useCallback(() => {
+    if (limpandoPesquisa) return;
+    setConfirmacaoAberta(false);
+    setErroLimpeza(null);
+  }, [limpandoPesquisa]);
+
+  const fecharExportacao = useCallback(() => {
+    setExportacaoAberta(false);
+  }, []);
+
+  async function confirmarNovaPlanilha() {
+    setLimpandoPesquisa(true);
+    setErroLimpeza(null);
+
+    try {
+      await limparPesquisaAtual();
+      setConfirmacaoAberta(false);
+      navigate("/import");
+    } catch (error) {
+      setErroLimpeza(
+        error instanceof Error
+          ? error.message
+          : "Não foi possível limpar os dados atuais.",
+      );
+    } finally {
+      setLimpandoPesquisa(false);
+    }
   }
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
+    const timer = window.setTimeout(
+      () => setCaminhoCarregado(pathname),
+      MOCK_REQUEST_DELAY_MS,
+    );
+    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden lg:block">
+    <div ref={dashboardRootRef} className="min-h-screen bg-canvas text-ink">
+      {exportacaoAberta && (
+        <ExportDialog
+          questions={perguntasDashboard}
+          currentQuestionId={perguntaId}
+          currentTarget={dashboardContentRef}
+          fullTarget={dashboardRootRef}
+          onClose={fecharExportacao}
+        />
+      )}
+      <ConfirmationDialog
+        open={confirmacaoAberta}
+        title="Tem certeza?"
+        description="Os dados atuais serão substituídos pelos da nova planilha. Essa ação não poderá ser desfeita."
+        confirmLabel="Enviar outra planilha"
+        loading={limpandoPesquisa}
+        error={erroLimpeza}
+        onConfirm={confirmarNovaPlanilha}
+        onClose={fecharConfirmacao}
+      />
+      <aside
+        className="fixed inset-y-0 left-0 z-40 hidden lg:block"
+        data-export-exclude="true"
+      >
         <DashboardSidebar
           items={itens}
           collapsed={menuRecolhido}
@@ -479,7 +564,10 @@ export function HomePage() {
       </aside>
 
       {menuMobileAberto && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div
+          className="fixed inset-0 z-50 lg:hidden"
+          data-export-exclude="true"
+        >
           <button
             type="button"
             className="absolute inset-0 bg-ink/30"
@@ -496,7 +584,10 @@ export function HomePage() {
         </div>
       )}
 
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-paper/90 px-4 backdrop-blur lg:hidden">
+      <header
+        className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-line bg-paper/90 px-4 backdrop-blur lg:hidden"
+        data-export-exclude="true"
+      >
         <Button variant="ghost" size="icon" onClick={() => setMenuMobileAberto(true)} aria-label="Abrir menu">
           <Menu className="size-5" />
         </Button>
@@ -509,18 +600,31 @@ export function HomePage() {
         </Button>
       </header>
 
-      <div className={cn("transition-[padding] duration-200", menuRecolhido ? "lg:pl-20" : "lg:pl-64")}>
-        {perguntaId ? (
-          pergunta ? (
-            <AnalisePergunta key={pergunta.id} pesquisaId={pesquisaId} pergunta={pergunta} />
+      <div
+        className={cn("transition-[padding] duration-200", menuRecolhido ? "lg:pl-20" : "lg:pl-64")}
+        data-export-shell="true"
+      >
+        <div
+          ref={dashboardContentRef}
+          className="min-h-screen bg-canvas"
+          data-export-content="true"
+        >
+          {conteudoCarregando ? (
+            <HomeContentSkeleton
+              variant={perguntaId ? "question" : emCatalogo ? "catalog" : "overview"}
+            />
+          ) : perguntaId ? (
+            pergunta ? (
+              <AnalisePergunta key={pergunta.id} pesquisaId={pesquisaId} pergunta={pergunta} />
+            ) : (
+              <PerguntaNaoEncontrada pesquisaId={pesquisaId} />
+            )
+          ) : emCatalogo ? (
+            <CatalogoPerguntas pesquisaId={pesquisaId} />
           ) : (
-            <PerguntaNaoEncontrada pesquisaId={pesquisaId} />
-          )
-        ) : emCatalogo ? (
-          <CatalogoPerguntas pesquisaId={pesquisaId} />
-        ) : (
-          <VisaoGeral pesquisaId={pesquisaId} />
-        )}
+            <VisaoGeral pesquisaId={pesquisaId} />
+          )}
+        </div>
       </div>
     </div>
   );

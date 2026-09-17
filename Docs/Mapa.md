@@ -18,7 +18,7 @@ atualizados sempre que uma decisão relevante for tomada.
 | [business-rules.md](./business-rules.md) | Regras estatísticas e visualizações permitidas. | Em elaboração |
 | [import-format.md](./import-format.md) | Formatos de arquivo e regras de importação. | Em elaboração |
 | [design-system.md](./design-system.md) | Tokens visuais, componentes reutilizáveis e catálogo do frontend. | Ativo |
-| `api.md` | Contratos entre frontend e backend. | Pendente |
+| [api.md](./api.md) | Contratos entre frontend e backend. | Em elaboração |
 | `testing.md` | Estratégia e casos de teste. | Pendente |
 | `team-guide.md` | Guia de colaboração para os integrantes. | Pendente |
 | `STATUS.md` | Estado atual das entregas e próximos passos. | Pendente |

@@ -65,7 +65,6 @@ export function PieChart({
               <Tooltip<SVGPathElement>
                 key={sector.label}
                 pinned={selected}
-                suppressTransient={selectedIndex !== null && !selected}
                 content={
                   <span className="grid min-w-28 gap-0.5">
                     <span className="font-semibold">{sector.label}</span>

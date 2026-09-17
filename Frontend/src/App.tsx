@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { LandPage } from "./pages/land-page";
 import { HomePage } from "./pages/home-page";
+import { ThemeToggle } from "./components";
 
 const ComponentsPage = lazy(() =>
   import("./pages/components-page").then((module) => ({
@@ -21,6 +22,7 @@ function PageFallback() {
 export default function App() {
   return (
     <BrowserRouter>
+      <ThemeToggle />
       <Routes>
         <Route
           path="/components"

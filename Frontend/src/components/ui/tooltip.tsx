@@ -40,7 +40,6 @@ type TooltipProps<T extends Element> = {
   className?: string;
   disabled?: boolean;
   pinned?: boolean;
-  suppressTransient?: boolean;
 };
 
 const placementStyles: Record<TooltipPlacement, string> = {
@@ -95,7 +94,6 @@ export function Tooltip<T extends Element>({
   className,
   disabled = false,
   pinned = false,
-  suppressTransient = false,
 }: TooltipProps<T>) {
   const tooltipId = useId();
   const [anchorRect, setAnchorRect] = useState<AnchorRect | null>(null);
@@ -115,9 +113,8 @@ export function Tooltip<T extends Element>({
     };
   }, [anchorRect]);
 
-  const openTooltip = (target: T, transient = true) => {
+  const openTooltip = (target: T) => {
     if (disabled) return;
-    if (transient && suppressTransient) return;
 
     const rect = target.getBoundingClientRect();
     const resolvedPlacement = resolvePlacement(rect, placement);
@@ -143,7 +140,7 @@ export function Tooltip<T extends Element>({
       openTooltip(event.currentTarget);
     },
     onMouseLeave: () => setHovered(false),
-    onClick: (event) => openTooltip(event.currentTarget, false),
+    onClick: (event) => openTooltip(event.currentTarget),
     onFocus: (event) => {
       setFocused(true);
       openTooltip(event.currentTarget);

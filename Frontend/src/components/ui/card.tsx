@@ -5,7 +5,7 @@ import { cn } from '../../lib/cn'
 const cardStyles = cva('rounded-2xl border', {
   variants: {
     variant: {
-      elevated: 'border-white/80 bg-paper shadow-card',
+      elevated: 'border-line/80 bg-paper shadow-card',
       outline: 'border-line bg-paper/65',
       tinted: 'border-brand-200/70 bg-brand-50/70',
       interactive:
