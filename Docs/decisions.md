@@ -182,9 +182,24 @@ realizada e suas consequências.
   as bordas da malha; movimento reduzido apresenta imediatamente o estado final;
   PDF e JPEG são capturados no navegador; XLSX e CSV são gerados por
   `GET /api/exportacoes/dados`; CSV representa uma pergunta; XLSX também pode
-  representar a pesquisa inteira; o dashboard completo em JPEG é uma única
-  imagem longa; e exportações visuais omitem a navegação da aplicação, preservam
-  o estado final dos gráficos e evitam uma última página quase vazia no PDF.
+  representar a pesquisa inteira; e exportações visuais omitem a navegação da
+  aplicação e preservam o estado final dos gráficos.
+
+## DEC-015 - Composição dos PDFs da V6
+
+- **Situação:** aceita
+- **Decisão:** restringir JPEG à tela atual; ajustar o PDF de tela atual em uma
+  única folha A4 com fundo temático; e transformar o dashboard completo em um
+  relatório PDF com capa e uma pergunta por página. A capa deriva o título do
+  nome original da planilha, mantido pelo backend. O usuário escolhe uma
+  predefinição de gráfico e pode sobrescrever cada pergunta com uma opção
+  compatível.
+- **Motivo:** eliminar cortes, páginas residuais e grandes áreas brancas, além de
+  diferenciar claramente a captura pontual do relatório consolidado.
+- **Consequências:** o frontend usa o mesmo componente de página em um laço para
+  gerar as perguntas ordenadas; a configuração de gráficos pertence apenas à
+  apresentação do relatório; e cálculos, dados e metadados persistentes
+  continuam sob responsabilidade da API e do backend.
 
 ## Decisões pendentes
 

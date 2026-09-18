@@ -5,11 +5,14 @@ export type ExportFormat = "jpeg" | "pdf" | "xlsx" | "csv";
 export type VisualExportScope = "current" | "full";
 export type DataExportScope = "all" | "question";
 
-type VisualExportOptions = {
+type CurrentVisualExportOptions = {
   format: "jpeg" | "pdf";
-  scope: VisualExportScope;
   currentTarget: RefObject<HTMLElement | null>;
-  fullTarget: RefObject<HTMLElement | null>;
+};
+
+type DashboardPdfExportOptions = {
+  pageTargets: HTMLElement[];
+  onProgress?: (current: number, total: number) => void;
 };
 
 type DataExportOptions = {
@@ -40,11 +43,6 @@ function waitForPaint() {
       window.requestAnimationFrame(() => resolve()),
     ),
   );
-}
-
-function getExportFileName(scope: VisualExportScope, extension: string) {
-  const suffix = scope === "full" ? "dashboard-completo" : "tela-atual";
-  return `unifan-${suffix}.${extension}`;
 }
 
 async function loadImage(dataUrl: string) {
@@ -147,59 +145,59 @@ function lockSvgPresentationStyles(target: HTMLElement) {
   };
 }
 
-const MAX_PDF_REDUCTION_TO_AVOID_TRAILING_PAGE = 0.15;
-const MAX_TRAILING_PAGE_OCCUPANCY = 0.25;
+function parseCssColor(color: string): [number, number, number] | null {
+  const rgb = color.match(/rgba?\(\s*(\d+)\D+(\d+)\D+(\d+)/i);
+  if (rgb) return [Number(rgb[1]), Number(rgb[2]), Number(rgb[3])];
 
-function getPdfImageDimensions(
-  image: HTMLImageElement,
-  pageWidth: number,
-  pageHeight: number,
-) {
-  const naturalHeight = (image.height * pageWidth) / image.width;
-  const naturalPageCount = Math.max(1, Math.ceil(naturalHeight / pageHeight));
-
-  if (naturalPageCount === 1) {
-    return { width: pageWidth, height: naturalHeight, offsetX: 0 };
-  }
-
-  const precedingPagesHeight = (naturalPageCount - 1) * pageHeight;
-  const trailingHeight = naturalHeight - precedingPagesHeight;
-  const trailingOccupancy = trailingHeight / pageHeight;
-  const reduction = 1 - precedingPagesHeight / naturalHeight;
-
-  if (
-    trailingOccupancy <= MAX_TRAILING_PAGE_OCCUPANCY &&
-    reduction <= MAX_PDF_REDUCTION_TO_AVOID_TRAILING_PAGE
-  ) {
-    const scale = precedingPagesHeight / naturalHeight;
-    const width = pageWidth * scale;
-    return {
-      width,
-      height: precedingPagesHeight,
-      offsetX: (pageWidth - width) / 2,
-    };
-  }
-
-  return { width: pageWidth, height: naturalHeight, offsetX: 0 };
+  const hex = color.match(/^#([\da-f]{6})$/i)?.[1];
+  if (!hex) return null;
+  return [
+    Number.parseInt(hex.slice(0, 2), 16),
+    Number.parseInt(hex.slice(2, 4), 16),
+    Number.parseInt(hex.slice(4, 6), 16),
+  ];
 }
 
-export async function exportVisual({
-  format,
-  scope,
-  currentTarget,
-  fullTarget,
-}: VisualExportOptions) {
-  const target = scope === "full" ? fullTarget.current : currentTarget.current;
-  if (!target) throw new Error("A área do dashboard ainda não está pronta.");
+function fillPdfBackground(
+  pdf: import("jspdf").jsPDF,
+  color: string,
+  width: number,
+  height: number,
+) {
+  const [red, green, blue] = parseCssColor(color) ?? [242, 232, 220];
+  pdf.setFillColor(red, green, blue);
+  pdf.rect(0, 0, width, height, "F");
+}
 
+function prepareTargetForCapture(target: HTMLElement) {
   target.classList.add("export-capturing");
   const restoreChartStyles = lockChartsInFinalState(target);
   const restoreSvgStyles = lockSvgPresentationStyles(target);
+
+  return () => {
+    restoreSvgStyles();
+    restoreChartStyles();
+    target.classList.remove("export-capturing");
+  };
+}
+
+export async function exportCurrentVisual({
+  format,
+  currentTarget,
+}: CurrentVisualExportOptions) {
+  const screenTarget = currentTarget.current;
+  if (!screenTarget) throw new Error("A área do dashboard ainda não está pronta.");
+
+  const target =
+    format === "pdf"
+      ? screenTarget.querySelector<HTMLElement>(":scope > main") ?? screenTarget
+      : screenTarget;
+  const restoreTarget = prepareTargetForCapture(target);
   await waitForPaint();
 
   try {
     const { toJpeg, toPng } = await import("html-to-image");
-    const backgroundColor = getComputedStyle(target).backgroundColor;
+    const backgroundColor = getComputedStyle(screenTarget).backgroundColor;
     const options = {
       backgroundColor,
       cacheBust: true,
@@ -210,7 +208,7 @@ export async function exportVisual({
 
     if (format === "jpeg") {
       const dataUrl = await toJpeg(target, { ...options, quality: 0.95 });
-      downloadDataUrl(dataUrl, getExportFileName(scope, "jpg"));
+      downloadDataUrl(dataUrl, "unifan-tela-atual.jpg");
       return;
     }
 
@@ -221,33 +219,84 @@ export async function exportVisual({
     const pdf = new jsPDF({ orientation, unit: "mm", format: "a4" });
     const pageWidth = pdf.internal.pageSize.getWidth();
     const pageHeight = pdf.internal.pageSize.getHeight();
-    const rendered = getPdfImageDimensions(
-      image,
-      pageWidth,
-      pageHeight,
+    const margin = 8;
+    const availableWidth = pageWidth - margin * 2;
+    const availableHeight = pageHeight - margin * 2;
+    const scale = Math.min(
+      availableWidth / image.width,
+      availableHeight / image.height,
     );
-    const pageCount = Math.max(1, Math.ceil(rendered.height / pageHeight));
+    const renderedWidth = image.width * scale;
+    const renderedHeight = image.height * scale;
+    const offsetX = (pageWidth - renderedWidth) / 2;
+    const offsetY = (pageHeight - renderedHeight) / 2;
 
-    for (let page = 0; page < pageCount; page += 1) {
-      if (page > 0) pdf.addPage("a4", orientation);
+    fillPdfBackground(pdf, backgroundColor, pageWidth, pageHeight);
+    pdf.addImage(
+      dataUrl,
+      "PNG",
+      offsetX,
+      offsetY,
+      renderedWidth,
+      renderedHeight,
+      undefined,
+      "FAST",
+    );
+    pdf.save("unifan-tela-atual.pdf");
+  } finally {
+    restoreTarget();
+  }
+}
+
+export async function exportDashboardPdf({
+  pageTargets,
+  onProgress,
+}: DashboardPdfExportOptions) {
+  if (pageTargets.length === 0) {
+    throw new Error("As páginas do relatório ainda não estão prontas.");
+  }
+
+  await document.fonts.ready;
+  const { toJpeg } = await import("html-to-image");
+  const { jsPDF } = await import("jspdf");
+  const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const pageWidth = pdf.internal.pageSize.getWidth();
+  const pageHeight = pdf.internal.pageSize.getHeight();
+
+  for (let index = 0; index < pageTargets.length; index += 1) {
+    const target = pageTargets[index];
+    const restoreTarget = prepareTargetForCapture(target);
+    onProgress?.(index + 1, pageTargets.length);
+    await waitForPaint();
+
+    try {
+      const backgroundColor = getComputedStyle(target).backgroundColor;
+      const dataUrl = await toJpeg(target, {
+        backgroundColor,
+        cacheBust: true,
+        pixelRatio: 1.25,
+        quality: 0.92,
+        filter: (node: HTMLElement) => node.dataset?.exportExclude !== "true",
+      });
+
+      if (index > 0) pdf.addPage("a4", "portrait");
+      fillPdfBackground(pdf, backgroundColor, pageWidth, pageHeight);
       pdf.addImage(
         dataUrl,
-        "PNG",
-        rendered.offsetX,
-        -page * pageHeight,
-        rendered.width,
-        rendered.height,
+        "JPEG",
+        0,
+        0,
+        pageWidth,
+        pageHeight,
         undefined,
         "FAST",
       );
+    } finally {
+      restoreTarget();
     }
-
-    pdf.save(getExportFileName(scope, "pdf"));
-  } finally {
-    restoreSvgStyles();
-    restoreChartStyles();
-    target.classList.remove("export-capturing");
   }
+
+  pdf.save("unifan-dashboard-completo.pdf");
 }
 
 function fileNameFromDisposition(disposition: string | null, fallback: string) {

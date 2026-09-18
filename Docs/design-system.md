@@ -63,18 +63,25 @@ O item `Exportar` da `DashboardSidebar` abre `ExportDialog`, renderizado em
 portal. O modal oferece PDF, JPEG, XLSX e CSV e altera os controles conforme o
 formato:
 
-- PDF/JPEG: tela atual ou dashboard completo;
+- PDF: tela atual ou dashboard completo;
+- JPEG: somente tela atual;
 - XLSX: pesquisa completa ou pergunta específica;
 - CSV: pergunta específica, com o seletor de escopo bloqueado;
 - ao exportar uma pergunta, o seletor inicia na pergunta aberta, quando houver.
 
 `Frontend/src/services/exportacoes.ts` captura os conteúdos visuais com
-`html-to-image` e monta PDFs paginados com `jsPDF`. Durante a captura, transições,
+`html-to-image` e monta PDFs A4 com `jsPDF`. Durante a captura, transições,
 animações e cursor de texto são desativados para produzir uma imagem estável; os
 gráficos são fixados no último quadro da animação para preservar linhas, pontos e
-revelações circulares. A captura também remove menus e controles de navegação,
-usa somente a altura real do conteúdo e reduz de forma limitada a imagem quando
-isso evita uma última página quase vazia. Os formatos de dados chamam
+revelações circulares. A tela atual é centralizada e ajustada em uma única folha,
+cujo fundo recebe a cor do canvas do tema.
+
+O dashboard completo é montado fora da área visível por
+`Frontend/src/feats/home/report-pages.tsx`: uma capa usa o nome original recebido
+por `GET /api/pesquisas/atual`, seguida por uma página A4 fixa para cada pergunta.
+O modal oferece uma predefinição global e seletores por pergunta limitados aos
+gráficos compatíveis. As páginas são capturadas sequencialmente, com progresso
+visível, e reunidas no mesmo PDF. Os formatos de dados chamam
 `GET /api/exportacoes/dados`; a regra de seleção das
 colunas e a geração do arquivo permanecem no backend. O atraso mockado de 2
 segundos também é aplicado à chamada de dados para manter o estado de loading

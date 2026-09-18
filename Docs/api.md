@@ -20,6 +20,28 @@ Confirma que o servidor está disponível.
 
 ## Pesquisa atual
 
+### `GET /api/pesquisas/atual`
+
+Retorna os metadados da pesquisa importada. O nome original do arquivo é
+preservado no backend para que a capa do relatório completo possa derivar seu
+título sem receber regras de persistência no frontend.
+
+```json
+{
+  "data": {
+    "id": "pesquisa-tecnologia-2026",
+    "nome": "Pesquisa sobre tecnologia",
+    "nomeArquivoOriginal": "pesquisa_tecnologia-2026.xlsx",
+    "totalRespostas": 1000,
+    "totalPerguntas": 25
+  }
+}
+```
+
+Quando não existe uma pesquisa atual, a rota responde `404` com o código
+`PESQUISA_NOT_FOUND`. Enquanto a importação persistente não está integrada, o
+serviço expõe os metadados do mock na mesma camada que mantém o estado da V5.
+
 ### `DELETE /api/pesquisas/atual`
 
 Invalida os dados da pesquisa atual antes de o usuário importar outra planilha.

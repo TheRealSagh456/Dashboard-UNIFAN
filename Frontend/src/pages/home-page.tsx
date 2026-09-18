@@ -45,7 +45,10 @@ import { TabelaFrequencias } from "../feats/home/frequency-table";
 import { VisualizacaoPergunta } from "../feats/home/question-charts";
 import { cn } from "../lib/cn";
 import { MOCK_REQUEST_DELAY_MS } from "../services/api";
-import { limparPesquisaAtual } from "../services/pesquisas";
+import {
+  limparPesquisaAtual,
+  obterPesquisaAtual,
+} from "../services/pesquisas";
 
 const todasCategorias: CategoriaPergunta[] = [
   "Discreta",
@@ -435,6 +438,9 @@ export function HomePage() {
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
   const [limpandoPesquisa, setLimpandoPesquisa] = useState(false);
   const [erroLimpeza, setErroLimpeza] = useState<string | null>(null);
+  const [nomeArquivoOriginal, setNomeArquivoOriginal] = useState(
+    pesquisaDemo.nomeArquivoOriginal,
+  );
   const dashboardRootRef = useRef<HTMLDivElement>(null);
   const dashboardContentRef = useRef<HTMLDivElement>(null);
   const pergunta = perguntaId
@@ -529,6 +535,21 @@ export function HomePage() {
     return () => window.clearTimeout(timer);
   }, [pathname]);
 
+  useEffect(() => {
+    let ativo = true;
+    obterPesquisaAtual()
+      .then((pesquisaAtual) => {
+        if (ativo) setNomeArquivoOriginal(pesquisaAtual.nomeArquivoOriginal);
+      })
+      .catch(() => {
+        // O mock local permanece como fallback enquanto a importação persistente
+        // ainda não alimenta os metadados da pesquisa no backend.
+      });
+    return () => {
+      ativo = false;
+    };
+  }, []);
+
   return (
     <div ref={dashboardRootRef} className="min-h-screen bg-canvas text-ink">
       {exportacaoAberta && (
@@ -536,7 +557,8 @@ export function HomePage() {
           questions={perguntasDashboard}
           currentQuestionId={perguntaId}
           currentTarget={dashboardContentRef}
-          fullTarget={dashboardRootRef}
+          sourceFileName={nomeArquivoOriginal}
+          totalResponses={pesquisaDemo.totalRespostas}
           onClose={fecharExportacao}
         />
       )}

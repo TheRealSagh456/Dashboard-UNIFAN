@@ -237,6 +237,21 @@ a {
   transform: none !important;
 }
 
+.pdf-report-staging {
+  position: fixed;
+  top: 0;
+  left: -20000px;
+  z-index: -9999;
+  width: 1240px;
+  pointer-events: none;
+}
+
+.pdf-report-staging > div {
+  width: 1240px;
+  height: 1754px;
+  overflow: hidden;
+}
+
 .chart-bar-rise-vertical {
   transform-box: fill-box;
   transform-origin: center bottom;

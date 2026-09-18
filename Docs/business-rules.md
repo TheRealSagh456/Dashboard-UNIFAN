@@ -134,13 +134,21 @@ suas definições em tooltip no hover e no foco de teclado.
 
 ## Exportação
 
-- PDF e JPEG representam o conteúdo principal sem navegação lateral, cabeçalho
-  móvel ou controles de troca de página. O escopo completo inclui toda a altura
-  renderizada; em JPEG, o resultado é uma única imagem longa.
-- O PDF divide automaticamente capturas realmente longas em páginas A4,
-  preservando a largura e a ordem visual. Quando sobraria apenas um pequeno
-  fragmento isolado na última folha, a captura recebe uma redução limitada para
-  evitar uma página quase vazia.
+- JPEG representa somente a tela atual, sem navegação lateral, cabeçalho móvel
+  ou controles de troca de página, e preserva o enquadramento já aprovado.
+- O PDF de tela atual ajusta o conteúdo principal a uma única página A4, sem
+  corte, centralizado e com o fundo preenchido pela cor do tema visualizado.
+- O dashboard completo está disponível somente em PDF. Ele começa com uma capa
+  temática e segue com uma pergunta por página, na ordem do questionário. Cada
+  página contém cabeçalho, medidas, gráfico e distribuição de frequências, sem
+  controles interativos da aplicação.
+- O título da capa é derivado do nome original da planilha: a extensão é
+  removida, `_` e `-` viram espaços, espaços repetidos são condensados e a
+  primeira letra do resultado é convertida para maiúscula.
+- Antes de gerar o relatório completo, o usuário pode aplicar uma predefinição
+  de gráficos a todas as perguntas e substituir individualmente apenas as que
+  desejar. Cada seletor individual oferece somente gráficos compatíveis com a
+  pergunta.
 - XLSX permite exportar a pesquisa completa ou apenas uma pergunta. A pesquisa
   completa preserva as colunas e respostas da fonte importada.
 - XLSX e CSV de uma pergunta contêm duas colunas: `ID da resposta` e a pergunta
@@ -148,8 +156,9 @@ suas definições em tooltip no hover e no foco de teclado.
   redundante da pesquisa inteira.
 - A seleção e geração dos arquivos de dados pertencem ao backend. O frontend
   envia somente formato, escopo e identificador da pergunta para a API.
-- PDF e JPEG são capturas da interface e, por isso, são produzidos no frontend
-  com o tema e a página que o usuário está visualizando.
+- PDF e JPEG são composições visuais e, por isso, são produzidos no frontend
+  com o tema visualizado. Metadados como o nome original da planilha continuam
+  vindo da API.
 - Formato, escopo e pergunta devem ser validados novamente pelo backend; valores
   inválidos usam a estrutura de erro padrão da API.
 
