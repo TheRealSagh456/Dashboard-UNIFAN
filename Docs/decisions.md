@@ -74,6 +74,33 @@ realizada e suas consequências.
   Comportamentos auxiliares, como tooltips, devem ser associados por composição,
   sem criar dependência obrigatória entre a marca gráfica e a interação.
 
+## DEC-007 - Persistência com better-sqlite3 e migrations versionadas
+
+- **Situação:** aceita
+- **Decisão:** utilizar `better-sqlite3` como driver do SQLite, com o banco
+  aberto em modo WAL, `foreign_keys` ativo e `busy_timeout`, e gerenciar o
+  schema por migrations `.sql` versionadas em `Backend/src/database/sql`,
+  aplicadas na inicialização do servidor pelo runner `migracoes.ts` e
+  registradas na tabela `schema_migrations`.
+- **Motivo:** o better-sqlite3 é síncrono e embutido, adequado ao volume de
+  uma importação de até 30 perguntas por arquivo; migrations em SQL puro
+  mantêm o schema auditável e reproduzível em qualquer máquina do grupo,
+  sem depender de um banco pronto distribuído no repositório.
+- **Consequências:** o arquivo do banco (`src/database/data/dashboard.db`)
+  é descartável, ignorado pelo git e recriado pelas migrations; o servidor
+  roda TypeScript diretamente no Node 24+ (sem etapa de build), exigindo
+  imports com extensão `.ts` e as opções `allowImportingTsExtensions` e
+  `noEmit` no `Backend/tsconfig.json`. Novas alterações de schema devem
+  entrar como novos arquivos `NNN_descricao.sql`, nunca editando migrations
+  já aplicadas. O schema inicial segue o formato longo: uma tabela
+  `resposta` com `valor_bruto` preservado e colunas tipadas
+  (`valor_numerico`, `valor_categoria`), conforme as regras de
+  [import-format.md](./import-format.md) e [mock-data.md](./mock-data.md).
+  Colunas ordinais guardam a ordem confirmada das categorias em
+  `coluna.categorias_confirmadas` (array JSON); o dialeto CSV confirmado na
+  revisão é registrado em `importacao.delimitador` e
+  `importacao.separador_decimal`.
+
 ## Decisões pendentes
 
 | Tema | Definição necessária | Impacto principal |

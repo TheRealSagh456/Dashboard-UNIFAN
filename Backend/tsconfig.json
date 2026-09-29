@@ -12,10 +12,11 @@
     "types": [],
     // For nodejs:
     // "lib": ["esnext"],
-    // "types": ["node"],
-    // and npm install -D @types/node
+    "types": ["node"],
 
     // Other Outputs
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "sourceMap": true,
     "declaration": true,
     "declarationMap": true,
