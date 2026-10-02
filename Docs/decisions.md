@@ -74,7 +74,34 @@ realizada e suas consequências.
   Comportamentos auxiliares, como tooltips, devem ser associados por composição,
   sem criar dependência obrigatória entre a marca gráfica e a interação.
 
-## DEC-007 - Grades tabulares do frontend
+## DEC-007 - Persistência com better-sqlite3 e migrations versionadas
+
+- **Situação:** aceita
+- **Decisão:** utilizar `better-sqlite3` como driver do SQLite, com o banco
+  aberto em modo WAL, `foreign_keys` ativo e `busy_timeout`, e gerenciar o
+  schema por migrations `.sql` versionadas em `Backend/src/database/sql`,
+  aplicadas na inicialização do servidor pelo runner `migracoes.ts` e
+  registradas na tabela `schema_migrations`.
+- **Motivo:** o better-sqlite3 é síncrono e embutido, adequado ao volume de
+  uma importação de até 30 perguntas por arquivo; migrations em SQL puro
+  mantêm o schema auditável e reproduzível em qualquer máquina do grupo,
+  sem depender de um banco pronto distribuído no repositório.
+- **Consequências:** o arquivo do banco (`src/database/data/dashboard.db`)
+  é descartável, ignorado pelo git e recriado pelas migrations; o servidor
+  roda TypeScript diretamente no Node 24+ (sem etapa de build), exigindo
+  imports com extensão `.ts` e as opções `allowImportingTsExtensions` e
+  `noEmit` no `Backend/tsconfig.json`. Novas alterações de schema devem
+  entrar como novos arquivos `NNN_descricao.sql`, nunca editando migrations
+  já aplicadas. O schema inicial segue o formato longo: uma tabela
+  `resposta` com `valor_bruto` preservado e colunas tipadas
+  (`valor_numerico`, `valor_categoria`), conforme as regras de
+  [import-format.md](./import-format.md) e [mock-data.md](./mock-data.md).
+  Colunas ordinais guardam a ordem confirmada das categorias em
+  `coluna.categorias_confirmadas` (array JSON); o dialeto CSV confirmado na
+  revisão é registrado em `importacao.delimitador` e
+  `importacao.separador_decimal`.
+
+## DEC-008 - Grades tabulares do frontend
 
 - **Situação:** substituída pela DEC-008
 - **Decisão anterior:** utilizar a versão Community do MUI X Data Grid nas
@@ -83,7 +110,7 @@ realizada e suas consequências.
   pequeno de comportamentos e de integração direta com os componentes visuais do
   projeto. O MUI e o Emotion não chegaram a ser adicionados às dependências.
 
-## DEC-008 - Grade reutilizável de perguntas
+## DEC-009 - Grade reutilizável de perguntas
 
 - **Situação:** aceita
 - **Decisão:** manter uma `QuestionsGrid` própria, construída com React, Tailwind
@@ -95,7 +122,7 @@ realizada e suas consequências.
   alinhamentos, larguras, estilos de linha e ordenação controlada ou interna. A
   virtualização só será incluída quando o volume real justificar.
 
-## DEC-009 - Estrutura e gráficos do dashboard
+## DEC-009.2 - Estrutura e gráficos do dashboard
 
 - **Situação:** aceita
 - **Decisão:** separar visão geral, catálogo de perguntas e análise individual;
@@ -203,10 +230,10 @@ realizada e suas consequências.
 
 ## Decisões pendentes
 
-| Tema | Definição necessária | Impacto principal |
-| :--- | :--- | :--- |
-| Quartis | Confirmar a convenção matemática esperada. | Cálculos e testes estatísticos |
-| Rótulo das classes | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`. | Interface e documentação estatística |
-| Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição |
-| Classes de Sturges | Definir o arredondamento dos limites das classes. | Histograma, ogivas e tabelas |
-| Limites de arquivo | Definir tamanho máximo e quantidade prática de respostas. | Validação e desempenho |
+| Tema                | Definição necessária                                                                         | Impacto principal                    |
+| :------------------ | :------------------------------------------------------------------------------------------- | :----------------------------------- |
+| Quartis             | Confirmar a convenção matemática esperada.                                                   | Cálculos e testes estatísticos       |
+| Rótulo das classes  | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`.        | Interface e documentação estatística |
+| Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição               |
+| Classes de Sturges  | Definir o arredondamento dos limites das classes.                                            | Histograma, ogivas e tabelas         |
+| Limites de arquivo  | Definir tamanho máximo e quantidade prática de respostas.                                    | Validação e desempenho               |

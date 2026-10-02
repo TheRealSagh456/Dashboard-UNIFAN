@@ -1,26 +1,35 @@
-import fastify from 'fastify'
-import dotenv from 'dotenv'
-import { pesquisasRoutes } from './routes/pesquisas.routes.js'
-import { exportacoesRoutes } from './routes/exportacoes.routes.js'
+import fastify from "fastify";
+import dotenv from "dotenv";
+import { abrirBanco } from "./database/conexao.ts";
+import { executarMigracoes } from "./database/migracoes.ts";
+import { pesquisasRoutes } from "./routes/pesquisas.routes.js";
+import { exportacoesRoutes } from "./routes/exportacoes.routes.js";
 
-dotenv.config()
+dotenv.config();
 
-const app = fastify({logger: true})
+const app = fastify({ logger: true });
 
-app.get('/health', async () => {
-    return {data: {status: 'vivinho da silva'}}
-})
+const banco = abrirBanco();
+const migracoes = executarMigracoes(banco);
+if (migracoes.length > 0) {
+  app.log.info(`Migrations aplicadas: ${migracoes.join(", ")}`);
+}
 
-await app.register(pesquisasRoutes)
-await app.register(exportacoesRoutes)
+app.addHook("onClose", async () => {
+  banco.close();
+});
 
-const PORT = Number(process.env.PORT ?? 3333)
+app.get("/health", async () => {
+  return { data: { status: "vivinho da silva" } };
+});
 
-app.listen({port: PORT, host: '0.0.0.0'}, (err) => {
-    if(err) {
-        app.log.error(err)
-        process.exit(1)
-    }
-})
+const PORT = Number(process.env.PORT) ?? 3333;
 
-export default app
+app.listen({ port: PORT, host: "0.0.0.0" }, (err) => {
+  if (err) {
+    app.log.error(err);
+    process.exit(1);
+  }
+});
+
+export default app;
