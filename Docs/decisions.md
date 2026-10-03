@@ -74,18 +74,20 @@ realizada e suas consequências.
   Comportamentos auxiliares, como tooltips, devem ser associados por composição,
   sem criar dependência obrigatória entre a marca gráfica e a interação.
 
-## DEC-007 - Persistência com better-sqlite3 e migrations versionadas
+## DEC-007 - Persistência com Knex, better-sqlite3 e migrations versionadas
 
 - **Situação:** aceita
-- **Decisão:** utilizar `better-sqlite3` como driver do SQLite, com o banco
-  aberto em modo WAL, `foreign_keys` ativo e `busy_timeout`, e gerenciar o
-  schema por migrations `.sql` versionadas em `Backend/src/database/sql`,
-  aplicadas na inicialização do servidor pelo runner `migracoes.ts` e
-  registradas na tabela `schema_migrations`.
-- **Motivo:** o better-sqlite3 é síncrono e embutido, adequado ao volume de
-  uma importação de até 30 perguntas por arquivo; migrations em SQL puro
-  mantêm o schema auditável e reproduzível em qualquer máquina do grupo,
-  sem depender de um banco pronto distribuído no repositório.
+- **Decisão:** utilizar Knex como construtor de consultas e camada de acesso dos
+  services, com `better-sqlite3` como driver do SQLite. A conexão compartilhada
+  usa modo WAL, `foreign_keys` ativo e `busy_timeout`; o schema permanece em
+  migrations `.sql` versionadas em `Backend/src/database/sql`, aplicadas na
+  inicialização pelo runner `migracoes.ts` e registradas com checksum na tabela
+  `schema_migrations`.
+- **Motivo:** o Knex fornece consultas e transações consistentes para a camada de
+  services, enquanto o better-sqlite3 continua sendo um driver síncrono e
+  embutido, adequado ao volume de uma importação de até 30 perguntas. Migrations
+  em SQL puro mantêm o schema auditável e reproduzível em qualquer máquina do
+  grupo, sem depender de um banco pronto distribuído no repositório.
 - **Consequências:** o arquivo do banco (`src/database/data/dashboard.db`)
   é descartável, ignorado pelo git e recriado pelas migrations; o servidor
   roda TypeScript diretamente no Node 24+ (sem etapa de build), exigindo
@@ -99,7 +101,12 @@ realizada e suas consequências.
   Colunas ordinais guardam a ordem confirmada das categorias em
   `coluna.categorias_confirmadas` (array JSON); o dialeto CSV confirmado na
   revisão é registrado em `importacao.delimitador` e
-  `importacao.separador_decimal`.
+  `importacao.separador_decimal`. O delimitador TAB é persistido como o caractere
+  de tabulação real. Participantes, colunas, respostas e problemas relacionados
+  devem pertencer à mesma importação; o banco também valida a exclusividade dos
+  valores tipados e os metadados necessários antes da confirmação. Os services
+  obtêm a instância compartilhada por `obterBanco()` e, dentro de transações,
+  devem reutilizar o objeto `trx` recebido do Knex em todas as consultas.
 
 ## DEC-008 - Grades tabulares do frontend
 

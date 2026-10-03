@@ -19,12 +19,17 @@ type ResultadoExportacao = {
 };
 
 export class ErroExportacao extends Error {
+  readonly code: string;
+  readonly statusCode: number;
+
   constructor(
     message: string,
-    public readonly code: string,
-    public readonly statusCode = 400,
+    code: string,
+    statusCode = 400,
   ) {
     super(message);
+    this.code = code;
+    this.statusCode = statusCode;
   }
 }
 

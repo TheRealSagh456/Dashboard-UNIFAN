@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   ErroExportacao,
   gerarExportacaoDados,
-} from "../services/exportacoes.service.js";
+} from "../services/exportacoes.service.ts";
 
 type ExportacaoQuery = {
   format?: string;

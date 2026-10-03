@@ -1,6 +1,6 @@
-const fs = require("fs")
+import fs from "node:fs";
 
-if (!fs.existsSync('.env')) {
-  fs.copyFileSync('.env.example', '.env');
-  console.log('.env criado a partir de .env.example');
+if (!fs.existsSync(".env")) {
+  fs.copyFileSync(".env.example", ".env");
+  console.log(".env criado a partir de .env.example");
 }

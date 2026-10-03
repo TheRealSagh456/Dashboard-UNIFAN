@@ -2,7 +2,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import {
   limparDadosDaPesquisaAtual,
   obterPesquisaAtual,
-} from "../services/pesquisas.service.js";
+} from "../services/pesquisas.service.ts";
 
 export async function obterPesquisaAtualController(
   _request: FastifyRequest,

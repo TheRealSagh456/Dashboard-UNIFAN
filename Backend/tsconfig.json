@@ -12,7 +12,6 @@
     "types": ["node"],
     // For nodejs:
     // "lib": ["esnext"],
-    "types": ["node"],
 
     // Other Outputs
     "allowImportingTsExtensions": true,
@@ -40,6 +39,6 @@
     "isolatedModules": true,
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
-    "skipLibCheck": true,
+    "skipLibCheck": true
   }
 }

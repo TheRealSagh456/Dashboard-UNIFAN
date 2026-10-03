@@ -1,29 +1,33 @@
 import fastify from "fastify";
 import dotenv from "dotenv";
-import { abrirBanco } from "./database/conexao.ts";
+import { fecharBanco, obterBanco } from "./database/conexao.ts";
 import { executarMigracoes } from "./database/migracoes.ts";
-import { pesquisasRoutes } from "./routes/pesquisas.routes.js";
-import { exportacoesRoutes } from "./routes/exportacoes.routes.js";
+import { pesquisasRoutes } from "./routes/pesquisas.routes.ts";
+import { exportacoesRoutes } from "./routes/exportacoes.routes.ts";
 
 dotenv.config();
 
 const app = fastify({ logger: true });
 
-const banco = abrirBanco();
-const migracoes = executarMigracoes(banco);
+const banco = obterBanco();
+const migracoes = await executarMigracoes(banco);
 if (migracoes.length > 0) {
   app.log.info(`Migrations aplicadas: ${migracoes.join(", ")}`);
 }
 
+await app.register(pesquisasRoutes);
+await app.register(exportacoesRoutes);
+
 app.addHook("onClose", async () => {
-  banco.close();
+  await fecharBanco();
 });
 
 app.get("/health", async () => {
   return { data: { status: "vivinho da silva" } };
 });
 
-const PORT = Number(process.env.PORT) ?? 3333;
+const portaConfigurada = Number.parseInt(process.env.PORT ?? "", 10);
+const PORT = Number.isInteger(portaConfigurada) ? portaConfigurada : 3333;
 
 app.listen({ port: PORT, host: "0.0.0.0" }, (err) => {
   if (err) {
