@@ -69,9 +69,9 @@ Resposta de erro:
 }
 ```
 
-O controller delega a operação ao serviço de pesquisas. Na V5, como o repositório
-ainda não possui o esquema SQLite nem a importação integrada, o serviço mantém o
-estado corrente no processo do backend. Quando a persistência for implementada,
+O controller delega a operação ao serviço de pesquisas. O schema SQLite e as
+migrations já estão disponíveis, mas o serviço ainda mantém o estado corrente
+no processo do backend. Quando a integração com a persistência for implementada,
 a transação de exclusão deve substituir esse estado dentro do serviço, preservando
 o contrato HTTP e sem transferir lógica de banco para o frontend.
 
@@ -84,11 +84,11 @@ mantém a leitura e a seleção de colunas no backend.
 
 Query parameters:
 
-| Parâmetro | Valores | Obrigatório |
-| :--- | :--- | :--- |
-| `format` | `xlsx` ou `csv` | sim |
-| `scope` | `all` ou `question` | sim |
-| `questionId` | `q01` a `q25` | quando `scope=question` |
+| Parâmetro    | Valores             | Obrigatório             |
+| :----------- | :------------------ | :---------------------- |
+| `format`     | `xlsx` ou `csv`     | sim                     |
+| `scope`      | `all` ou `question` | sim                     |
+| `questionId` | `q01` a `q25`       | quando `scope=question` |
 
 Combinações disponíveis:
 
@@ -111,7 +111,18 @@ Parâmetros inválidos retornam status `400` e o envelope padrão, por exemplo:
 }
 ```
 
-Na V6, enquanto o armazenamento SQLite da importação ainda não existe, o serviço
+Na V6, enquanto a leitura da importação persistida ainda não está integrada, o serviço
 usa os mocks equivalentes em `Mocks/forms` como fonte bruta. A futura integração
 deve trocar somente essa leitura pelo repositório da pesquisa atual, preservando
 a rota, as validações e a projeção das colunas no backend.
+
+## Preparação das próximas etapas
+
+Os arquivos-base de importação e perguntas em `Backend/src/services`,
+`controllers` e `routes` contêm tarefas para os membros. Eles ainda não publicam
+endpoints. URLs, payloads, códigos de erro e a escolha da pesquisa atual devem
+ser definidos neste documento antes da implementação de cada etapa.
+
+O [roteiro do backend](./backend-guide.md) descreve o schema, o uso da conexão
+compartilhada e os critérios de validação. Os contratos existentes acima
+continuam atendidos pelos mocks até sua substituição pelos services persistentes.

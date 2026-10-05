@@ -18,6 +18,9 @@ if (migracoes.length > 0) {
 await app.register(pesquisasRoutes);
 await app.register(exportacoesRoutes);
 
+// TODO(membros): registrar as rotas de importação e perguntas após implementar
+// seus controllers e services e documentar os contratos em Docs/api.md.
+
 app.addHook("onClose", async () => {
   await fecharBanco();
 });

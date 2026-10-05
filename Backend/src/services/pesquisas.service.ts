@@ -9,9 +9,10 @@ type EstadoPesquisaAtual = {
   };
 };
 
-// O backend ainda não possui o esquema SQLite da importação. Este estado mantém
-// o contrato da V5 no servidor e será substituído pelo repositório SQLite nesta
-// mesma camada, sem exigir mudanças no controller ou no frontend.
+// O schema SQLite já existe, mas este serviço ainda usa o mock da V5.
+// TODO(membros): substituir o estado abaixo por consultas com obterBanco().
+// A pesquisa atual deve vir de uma importação confirmada; definir a seleção
+// em Docs/api.md antes de implementar. Roteiro: Docs/backend-guide.md, etapa 1.
 const estadoPesquisaAtual: EstadoPesquisaAtual = {
   possuiDados: true,
   pesquisa: {
@@ -28,6 +29,8 @@ export function obterPesquisaAtual() {
 }
 
 export function limparDadosDaPesquisaAtual() {
+  // TODO(membros): implementar a exclusão no SQLite em uma transação (etapa 2).
+  // Preservar o contrato { cleared: true } e propagar falhas ao controller.
   estadoPesquisaAtual.possuiDados = false;
 
   return {

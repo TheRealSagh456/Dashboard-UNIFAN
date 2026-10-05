@@ -5,20 +5,20 @@ Forms. Eles não antecipam nem fornecem os resultados estatísticos do backend.
 
 ## Localização
 
-Os arquivos estão documentados em [../Mocks](../Mocks/README.md):
+Os arquivos estão em [../Mocks/forms](../Mocks/forms):
 
 - `Mocks/forms/pesquisa-tecnologia.mock.xlsx`;
 - `Mocks/forms/pesquisa-tecnologia.mock.csv`.
 
 ## Cenário representado
 
-| Item | Quantidade |
-| :--- | ---: |
-| Respostas sintéticas | 1.000 |
-| Perguntas | 25 |
-| Colunas de metadados | 3 |
-| Total de colunas | 28 |
-| Células de resposta ausentes | 20 |
+| Item                         | Quantidade |
+| :--------------------------- | ---------: |
+| Respostas sintéticas         |      1.000 |
+| Perguntas                    |         25 |
+| Colunas de metadados         |          3 |
+| Total de colunas             |         28 |
+| Células de resposta ausentes |         20 |
 
 Os metadados são data e hora de envio, identificador externo e e-mail fictício.
 As ausências foram incluídas deliberadamente para testar o tratamento de células
@@ -73,27 +73,27 @@ definidos e comprovados nos testes criados pelos responsáveis pelo backend.
 
 Para o backend atual, em Node.js, TypeScript e Fastify, a recomendação é usar:
 
-| Biblioteca | Responsabilidade | Motivo da escolha |
-| :--- | :--- | :--- |
+| Biblioteca                         | Responsabilidade                     | Motivo da escolha                                                                       |
+| :--------------------------------- | :----------------------------------- | :-------------------------------------------------------------------------------------- |
 | SheetJS Community Edition (`xlsx`) | Ler arquivos Excel `.xlsx` e `.xls`. | Extrai abas, células e valores tipados, incluindo o formato legado previsto no projeto. |
-| `csv-parse` | Ler arquivos `.csv`. | Permite controlar delimitador, BOM, aspas e consistência das colunas. |
+| `csv-parse`                        | Ler arquivos `.csv`.                 | Permite controlar delimitador, BOM, aspas e consistência das colunas.                   |
 
 O SheetJS também lê CSV. Aqui, proponho `csv-parse` para deixar explícitas as
 regras do arquivo textual. As duas leituras convergem para uma matriz de valores
-e usam o mesmo tratamento depois. Essa é uma recomendação para a implementação;
-as dependências ainda não foram adicionadas ao backend.
+e usam o mesmo tratamento depois. As duas dependências já estão declaradas no
+backend e são usadas pela exportação mockada; os leitores de importação ainda
+serão implementados pelos membros, seguindo [backend-guide.md](./backend-guide.md).
 
 Fontes: [formatos e opções de leitura do SheetJS](https://docs.sheetjs.com/docs/api/parse-options/)
 e [opções do csv-parse](https://csv.js.org/parse/options/).
 
 ### Instalação e imports
 
-Quando forem implementar, executar a partir da raiz do repositório:
+Para preparar a versão atual, executar a partir da raiz do repositório:
 
 ```powershell
 cd Backend
-npm install --save-exact https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz
-npm install --save-exact csv-parse
+npm ci
 ```
 
 A documentação oficial consultada em 08/09/2026 indica a versão `0.20.3` do
@@ -105,8 +105,9 @@ versionado para que o grupo instale as mesmas versões com `npm ci`.
 O backend já utiliza `"type": "module"`. Os exemplos abaixo seguem esse padrão
 e carregam a versão CommonJS do SheetJS com `createRequire`, que inclui o suporte
 às codificações de arquivos Excel antigos. A aplicação continua usando ESM.
-No `Backend/tsconfig.json`, ao implementar, substituir `"types": []` por
-`"types": ["node"]`. O projeto já possui `@types/node`.
+O `Backend/tsconfig.json` já usa `"types": ["node"]`, e o projeto possui
+`@types/node`. O backend atual executa TypeScript diretamente com Node 24+;
+imports entre arquivos do projeto devem usar a extensão `.ts`.
 
 ## Fluxo de leitura e tratamento
 
@@ -123,17 +124,17 @@ ou contínua, nem se um número representa um código de categoria.
 
 ### Estrutura usada pelo SheetJS
 
-| Expressão | O que representa |
-| :--- | :--- |
-| `XLSX.read(buffer, opcoes)` | Converte os bytes do arquivo em um workbook, que representa o arquivo Excel inteiro. |
-| `workbook.SheetNames` | Lista dos nomes das abas, na ordem do arquivo. |
-| `workbook.Sheets[nome]` | Objeto de uma aba. |
-| `aba["D2"]` | Objeto de uma célula, quando ela existe. |
-| `celula.v` | Valor armazenado, como `18` ou `"Sim"`. |
-| `celula.t` | Tipo da célula: `n` para número, `s` para texto, `d` para data e `e` para erro. |
-| `celula.w` | Texto formatado para exibição, quando disponível. |
-| `celula.f` | Fórmula, quando presente. |
-| `XLSX.utils.sheet_to_json(aba, opcoes)` | Extrai os dados da aba para arrays ou objetos JavaScript. |
+| Expressão                               | O que representa                                                                     |
+| :-------------------------------------- | :----------------------------------------------------------------------------------- |
+| `XLSX.read(buffer, opcoes)`             | Converte os bytes do arquivo em um workbook, que representa o arquivo Excel inteiro. |
+| `workbook.SheetNames`                   | Lista dos nomes das abas, na ordem do arquivo.                                       |
+| `workbook.Sheets[nome]`                 | Objeto de uma aba.                                                                   |
+| `aba["D2"]`                             | Objeto de uma célula, quando ela existe.                                             |
+| `celula.v`                              | Valor armazenado, como `18` ou `"Sim"`.                                              |
+| `celula.t`                              | Tipo da célula: `n` para número, `s` para texto, `d` para data e `e` para erro.      |
+| `celula.w`                              | Texto formatado para exibição, quando disponível.                                    |
+| `celula.f`                              | Fórmula, quando presente.                                                            |
+| `XLSX.utils.sheet_to_json(aba, opcoes)` | Extrai os dados da aba para arrays ou objetos JavaScript.                            |
 
 Fontes: [workbook](https://docs.sheetjs.com/docs/csf/book/)
 e [células](https://docs.sheetjs.com/docs/csf/cell/).
@@ -258,17 +259,17 @@ separadores simultaneamente. [Opção delimiter](https://csv.js.org/parse/option
 As regras abaixo são uma proposta inicial para os integrantes implementarem.
 Guardar o valor original junto do valor tratado permite explicar cada correção.
 
-| Entrada e contexto | Tratamento esperado |
-| :--- | :--- |
-| Célula vazia, `null` ou texto só com espaços | Registrar `null`, como resposta ausente. |
-| `0` ou `"0"` em pergunta quantitativa | Preservar como número `0`. |
-| `"1,5"` em pergunta contínua, com decimal `,` | Converter para `1.5`. |
-| `"18"` em pergunta discreta | Converter para `18` e verificar se é inteiro. |
-| `"18,5"` em pergunta discreta | Relatar inconsistência; não arredondar silenciosamente. |
+| Entrada e contexto                              | Tratamento esperado                                                                |
+| :---------------------------------------------- | :--------------------------------------------------------------------------------- |
+| Célula vazia, `null` ou texto só com espaços    | Registrar `null`, como resposta ausente.                                           |
+| `0` ou `"0"` em pergunta quantitativa           | Preservar como número `0`.                                                         |
+| `"1,5"` em pergunta contínua, com decimal `,`   | Converter para `1.5`.                                                              |
+| `"18"` em pergunta discreta                     | Converter para `18` e verificar se é inteiro.                                      |
+| `"18,5"` em pergunta discreta                   | Relatar inconsistência; não arredondar silenciosamente.                            |
 | `"R0001"` ou `"00123"` em identificador textual | Preservar como texto. Zeros já perdidos na origem não são recuperados pelo parser. |
-| `"Sim"`, `"Não"` ou `"Perplexity"` | Preservar o texto, com acentos e capitalização. |
-| Categoria ordinal, como `"Frequentemente"` | Preservar o rótulo e associar a ordem confirmada no dicionário. |
-| Número com unidade, como `"2 horas"` | Relatar inconsistência; não aceitar apenas o prefixo numérico. |
+| `"Sim"`, `"Não"` ou `"Perplexity"`              | Preservar o texto, com acentos e capitalização.                                    |
+| Categoria ordinal, como `"Frequentemente"`      | Preservar o rótulo e associar a ordem confirmada no dicionário.                    |
+| Número com unidade, como `"2 horas"`            | Relatar inconsistência; não aceitar apenas o prefixo numérico.                     |
 
 ### Exemplo de conversão numérica
 
@@ -307,14 +308,17 @@ function normalizarNumero(
     return { ok: false, erro: "Número não finito." };
   }
   if (tipo === "discreta" && !Number.isSafeInteger(valor)) {
-    return { ok: false, erro: "Esperado um inteiro dentro da precisão suportada." };
+    return {
+      ok: false,
+      erro: "Esperado um inteiro dentro da precisão suportada.",
+    };
   }
   return { ok: true, valor };
 }
 
 normalizarNumero("1,5", "continua"); // { ok: true, valor: 1.5 }
-normalizarNumero("", "continua");    // { ok: true, valor: null }
-normalizarNumero("0", "discreta");   // { ok: true, valor: 0 }
+normalizarNumero("", "continua"); // { ok: true, valor: null }
+normalizarNumero("0", "discreta"); // { ok: true, valor: 0 }
 normalizarNumero("2 horas", "continua"); // { ok: false, erro: ... }
 ```
 

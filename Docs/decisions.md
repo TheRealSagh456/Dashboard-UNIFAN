@@ -235,6 +235,20 @@ realizada e suas consequências.
   apresentação do relatório; e cálculos, dados e metadados persistentes
   continuam sob responsabilidade da API e do backend.
 
+## DEC-016 - Preparação didática do backend
+
+- **Situação:** aceita
+- **Decisão:** reutilizar a base SQLite já integrada da `Backend-SQLite`, com as
+  melhorias posteriores da `main`, e preparar arquivos-base com `TODO`s e um
+  roteiro para os membros implementarem services, controllers e rotas.
+- **Motivo:** permitir que integrantes universitários com pouca experiência
+  construam e validem cada etapa, aprendendo as responsabilidades das camadas.
+- **Consequências:** os arquivos-base não implementam regras nem publicam novos
+  endpoints. A lógica de importação, consulta e análise fica a cargo dos membros;
+  os contratos devem ser documentados à medida que forem definidos. O ambiente
+  exige Node 24+, declarado no `package.json`. O [roteiro](./backend-guide.md)
+  descreve o schema, a conexão compartilhada e as etapas de validação.
+
 ## Decisões pendentes
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |

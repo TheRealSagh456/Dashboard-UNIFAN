@@ -4,6 +4,9 @@ import {
   obterPesquisaAtual,
 } from "../services/pesquisas.service.ts";
 
+// TODO(membros): quando os services consultarem o Knex, aguardar suas Promises
+// com await nos dois handlers. Manter SQL e regras no service (etapas 1 e 2).
+
 export async function obterPesquisaAtualController(
   _request: FastifyRequest,
   reply: FastifyReply,

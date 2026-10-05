@@ -3,6 +3,9 @@ import { fileURLToPath } from "node:url";
 import { parse } from "csv-parse/sync";
 import * as XLSX from "xlsx";
 
+// TODO(membros): na etapa 7 de Docs/backend-guide.md, substituir a fonte mock
+// pelos dados da importação confirmada. Preservar os contratos de exportação.
+
 export type FormatoExportacao = "xlsx" | "csv";
 export type EscopoExportacao = "all" | "question";
 
@@ -22,11 +25,7 @@ export class ErroExportacao extends Error {
   readonly code: string;
   readonly statusCode: number;
 
-  constructor(
-    message: string,
-    code: string,
-    statusCode = 400,
-  ) {
+  constructor(message: string, code: string, statusCode = 400) {
     super(message);
     this.code = code;
     this.statusCode = statusCode;
@@ -34,7 +33,10 @@ export class ErroExportacao extends Error {
 }
 
 const arquivoXlsx = fileURLToPath(
-  new URL("../../../Mocks/forms/pesquisa-tecnologia.mock.xlsx", import.meta.url),
+  new URL(
+    "../../../Mocks/forms/pesquisa-tecnologia.mock.xlsx",
+    import.meta.url,
+  ),
 );
 const arquivoCsv = fileURLToPath(
   new URL("../../../Mocks/forms/pesquisa-tecnologia.mock.csv", import.meta.url),
@@ -66,7 +68,11 @@ function validarOpcoes({ format, scope, questionId }: OpcoesExportacao) {
   if (scope === "question") {
     const match = /^q(\d{2})$/i.exec(questionId ?? "");
     const numeroPergunta = match ? Number(match[1]) : Number.NaN;
-    if (!Number.isInteger(numeroPergunta) || numeroPergunta < 1 || numeroPergunta > 25) {
+    if (
+      !Number.isInteger(numeroPergunta) ||
+      numeroPergunta < 1 ||
+      numeroPergunta > 25
+    ) {
       throw new ErroExportacao(
         "Selecione uma pergunta válida para exportar.",
         "EXPORT_QUESTION_INVALID",
@@ -78,11 +84,11 @@ function validarOpcoes({ format, scope, questionId }: OpcoesExportacao) {
   return { format, scope, questionId, indicePergunta };
 }
 
-function projetarPergunta(
-  linhas: unknown[][],
-  indicePergunta: number,
-) {
-  return linhas.map((linha) => [linha[1] ?? null, linha[indicePergunta] ?? null]);
+function projetarPergunta(linhas: unknown[][], indicePergunta: number) {
+  return linhas.map((linha) => [
+    linha[1] ?? null,
+    linha[indicePergunta] ?? null,
+  ]);
 }
 
 function serializarCsv(linhas: unknown[][]) {
@@ -123,7 +129,11 @@ async function exportarPerguntaXlsx(
   const planilhaExportacao = XLSX.utils.aoa_to_sheet(
     projetarPergunta(linhas, indicePergunta),
   );
-  XLSX.utils.book_append_sheet(workbookExportacao, planilhaExportacao, "Respostas");
+  XLSX.utils.book_append_sheet(
+    workbookExportacao,
+    planilhaExportacao,
+    "Respostas",
+  );
 
   return {
     conteudo: Buffer.from(
