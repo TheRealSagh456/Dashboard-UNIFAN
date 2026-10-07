@@ -76,6 +76,21 @@ gráficos são fixados no último quadro da animação para preservar linhas, po
 revelações circulares. A tela atual é centralizada e ajustada em uma única folha,
 cujo fundo recebe a cor do canvas do tema.
 
+Na captura do PDF de tela atual, `toPng` recebe `marginLeft: "0"` e
+`marginRight: "0"` e `marginInline: "0"` somente no clone. A propriedade lógica
+também é zerada porque a serialização pode restaurá-la sobre as margens físicas.
+Em janelas largas, o `main` centralizado
+possui margens automáticas calculadas em pixels; copiá-las sem o contêiner de
+origem deslocava o conteúdo para fora da imagem. O ajuste preserva largura,
+padding, gráficos, fundo temático e composição A4, sem modificar a tela original,
+o JPEG ou a captura das páginas do dashboard completo.
+
+A correção foi validada após a serialização do clone e pela renderização dos
+PDFs em 390, 1440, 1920 e 2560 px, nos dois temas e com menu expandido/recolhido.
+As capturas de tela atual permaneceram em uma página A4. JPEG, restauração dos
+estilos da tela e relatório completo com capa e 25 perguntas também foram
+conferidos; lint e build passaram sem novas dependências.
+
 O dashboard completo é montado fora da área visível por
 `Frontend/src/feats/home/report-pages.tsx`: uma capa usa o nome original recebido
 por `GET /api/pesquisas/atual`, seguida por uma página A4 fixa para cada pergunta.

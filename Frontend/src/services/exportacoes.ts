@@ -212,7 +212,13 @@ export async function exportCurrentVisual({
       return;
     }
 
-    const dataUrl = await toPng(target, options);
+    const dataUrl = await toPng(target, {
+      ...options,
+      // O clone não tem o contêiner que originou as margens de centralização.
+      // Inclua as margens lógicas para que a serialização não restaure o recuo.
+      // O ajuste afeta somente a captura do PDF, não a tela ou o JPEG.
+      style: { marginLeft: "0", marginRight: "0", marginInline: "0" },
+    });
     const image = await loadImage(dataUrl);
     const { jsPDF } = await import("jspdf");
     const orientation = image.width >= image.height ? "landscape" : "portrait";
