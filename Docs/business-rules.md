@@ -70,9 +70,11 @@ backend.
 O backend deverá devolver os gráficos permitidos e o gráfico recomendado para
 cada pergunta. O frontend não deve oferecer uma visualização incompatível.
 
-Colunas, barras, histogramas, pontos e boxplots são exibidos com eixo horizontal
-e vertical. O eixo de categorias informa a grandeza da pergunta, como `Idade
-(anos)`, e o eixo numérico usa `Quantidade`. As marcações numéricas usam uma
+Colunas, barras e pontos são exibidos com eixo horizontal e vertical. O eixo de
+categorias informa a grandeza da pergunta, como `Idade (anos)`, e o eixo numérico
+usa `Quantidade`. Histogramas usam limites numéricos no eixo horizontal e
+`Densidade de frequência` no vertical. O boxplot horizontal usa somente o eixo
+quantitativo, sem inventar uma segunda grandeza. As marcações numéricas usam uma
 escala de intervalos arredondados da sequência 1, 2, 2,5, 5 e 10 multiplicada
 por uma potência de dez, escolhida a partir do maior valor. O máximo divisor
 comum não é usado porque pode gerar intervalos pouco legíveis.
@@ -86,13 +88,27 @@ interação também deve funcionar por teclado.
 
 Barras usam três níveis da paleta: claro no estado básico, intermediário no
 hover e forte na seleção. Elas têm espaçamento, contorno e base reta alinhada ao
-eixo. Somente os cantos que não encostam no eixo podem ser arredondados. O
-histograma mantém separação visual mínima entre classes. Os rótulos das
-categorias permanecem horizontais e centralizados em relação às respectivas
-barras ou marcas.
+eixo. Somente os cantos que não encostam no eixo podem ser arredondados. Os
+rótulos das categorias permanecem horizontais e centralizados em relação às
+respectivas barras ou marcas.
+
+Histogramas têm barras contíguas, sem vãos ou cantos arredondados. A largura é
+proporcional à amplitude de cada classe; a altura usa a densidade absoluta
+`fi / amplitude`, recebida do backend. Assim, a área da barra representa a
+frequência, inclusive quando os intervalos têm larguras diferentes. O tooltip
+continua exibindo o intervalo, a quantidade de respostas e sua porcentagem.
+O frontend não interpreta rótulos para descobrir limites nem calcula densidades.
+Limites finitos, crescentes e contíguos são necessários; quando não estão
+disponíveis, apresenta uma mensagem em vez de desenhar um histograma incorreto.
+Os limites identificam as fronteiras das classes, sem representar categorias
+independentes. A convenção de inclusão das fronteiras pertence ao backend.
 
 O gráfico de pizza é preenchido, sem abertura central. A rosca é reservada à
-visão geral dos tipos de variável. Ao abrir o gráfico de pontos, a linha é
+visão geral dos tipos de variável. Uma categoria com 100% deve formar um círculo
+completo (ou uma rosca completa na visão geral); categorias de frequência zero
+não desenham setores. A caixa do boxplot tem cantos retos e mantém os cinco
+valores recebidos, sem recalcular quartis ou definir um tratamento de outliers.
+Ao abrir o gráfico de pontos, a linha é
 desenhada do primeiro ao último ponto e as marcas aparecem em sequência. A
 animação deve ser desativada quando o usuário preferir movimento reduzido.
 
@@ -172,8 +188,12 @@ Para cada pergunta, o frontend precisará receber pelo menos:
 - medidas estatísticas aplicáveis;
 - gráficos permitidos e gráfico recomendado;
 - distribuição com rótulo da classe e frequência absoluta;
+- para histogramas, limites inferior e superior finitos de cada classe e sua
+  densidade absoluta, calculados no backend;
 - resumo de cinco números para o boxplot quando ele for permitido.
 
 O frontend pode calcular as frequências acumuladas e relativas a partir de `fi`,
 mas a responsabilidade pelo cálculo das medidas estatísticas pertence ao
-backend.
+backend. A definição de classes, suas amplitudes e densidades também pertence
+ao backend. Os metadados de histograma no frontend atual são demonstrativos;
+a API de análises estatísticas ainda não os expõe.

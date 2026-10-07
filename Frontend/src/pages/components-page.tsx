@@ -856,6 +856,25 @@ export function ComponentsPage() {
                   />
                 </Card>
                 <Card className="min-w-0 overflow-hidden xl:col-span-2">
+                  <Text variant="label">Histograma reutilizável</Text>
+                  <Text variant="caption" tone="muted" className="mt-1">
+                    Classes contíguas, sem arredondamento, com larguras proporcionais
+                    aos intervalos. A altura usa a densidade recebida nos dados.
+                  </Text>
+                  <CartesianChart
+                    className="mt-5"
+                    variant="histogram"
+                    data={[
+                      { label: "0–2", value: 20, histogram: { lowerBound: 0, upperBound: 2, density: 10 } },
+                      { label: "2–4", value: 40, histogram: { lowerBound: 2, upperBound: 4, density: 20 } },
+                      { label: "4–8", value: 40, histogram: { lowerBound: 4, upperBound: 8, density: 10 } },
+                    ]}
+                    xLabel="Horas de uso por dia"
+                    yLabel="Densidade de frequência"
+                    ariaLabel="Histograma com classes de amplitudes diferentes"
+                  />
+                </Card>
+                <Card className="min-w-0 overflow-hidden xl:col-span-2">
                   <Text variant="label">Boxplot reutilizável</Text>
                   <Text variant="caption" tone="muted" className="mt-1">
                     Mínimo, extensão até o máximo e caixa aparecem em sequência.

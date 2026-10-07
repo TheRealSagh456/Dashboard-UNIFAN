@@ -8,7 +8,28 @@ export type CartesianChartDatum = {
   label: string;
   value: number;
   detail?: string;
+  histogram?: {
+    lowerBound: number;
+    upperBound: number;
+    density: number;
+  };
 };
+
+type HistogramDatum = CartesianChartDatum & {
+  histogram: NonNullable<CartesianChartDatum["histogram"]>;
+};
+
+function hasHistogramIntervals(data: CartesianChartDatum[]): data is HistogramDatum[] {
+  return data.length > 0 && data.every(({ histogram }, index) =>
+    histogram !== undefined &&
+    Number.isFinite(histogram.lowerBound) &&
+    Number.isFinite(histogram.upperBound) &&
+    histogram.upperBound > histogram.lowerBound &&
+    Number.isFinite(histogram.density) &&
+    histogram.density >= 0 &&
+    (index === 0 || data[index - 1].histogram?.upperBound === histogram.lowerBound),
+  );
+}
 
 type CartesianChartProps = {
   data: CartesianChartDatum[];
@@ -70,20 +91,38 @@ export function CartesianChart({
   const { rootRef, selectedIndex, selectIndex } = useChartInteraction<HTMLDivElement>();
   const activeIndex = hoveredIndex ?? selectedIndex;
   const horizontal = variant === "bars";
+  const histogramData = variant === "histogram" && hasHistogramIntervals(data) ? data : null;
+
+  if (variant === "histogram" && !histogramData) {
+    return <p role="status" className="py-8 text-center text-sm text-muted">Os intervalos do histograma ainda não estão disponíveis.</p>;
+  }
+
   const width = 760;
   const height = Math.max(360, horizontal ? data.length * 52 + 125 : 360);
   const margin = { top: 24, right: 24, bottom: horizontal ? 64 : 92, left: horizontal ? 168 : 72 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   const baseline = margin.top + chartHeight;
-  const scale = criarEscalaAgradavel(Math.max(...data.map((item) => item.value), 1));
+  const scale = criarEscalaAgradavel(Math.max(...data.map((item, index) => histogramData?.[index].histogram.density ?? item.value), 1));
   const band = horizontal ? chartHeight / data.length : chartWidth / data.length;
-  const gap = variant === "histogram" ? 5 : Math.min(18, band * 0.24);
-  const points = data.map((item, index) => ({
-    item,
-    x: horizontal ? margin.left + (item.value / scale.limite) * chartWidth : margin.left + band * index + band / 2,
-    y: horizontal ? margin.top + band * index + band / 2 : baseline - (item.value / scale.limite) * chartHeight,
-  }));
+  const gap = histogramData ? 0 : Math.min(18, band * 0.24);
+  const lowerBound = histogramData?.[0].histogram.lowerBound ?? 0;
+  const upperBound = histogramData?.[histogramData.length - 1].histogram.upperBound ?? 1;
+  const intervalPosition = (value: number) =>
+    margin.left + ((value - lowerBound) / (upperBound - lowerBound)) * chartWidth;
+  const points = data.map((item, index) => {
+    const interval = histogramData?.[index].histogram;
+    const left = interval ? intervalPosition(interval.lowerBound) : margin.left + band * index + gap / 2;
+    const right = interval ? intervalPosition(interval.upperBound) : left + Math.max(3, band - gap);
+
+    return {
+      item,
+      left,
+      barWidth: right - left,
+      x: horizontal ? margin.left + (item.value / scale.limite) * chartWidth : (left + right) / 2,
+      y: horizontal ? margin.top + band * index + band / 2 : baseline - ((interval?.density ?? item.value) / scale.limite) * chartHeight,
+    };
+  });
   const activePoint = activeIndex === null ? null : points[activeIndex];
 
   function interactionProps<T extends SVGElement>(index: number, triggerProps: TooltipTriggerProps<T>) {
@@ -200,8 +239,6 @@ export function CartesianChart({
         ) : (
           points.map((point, index) => {
             const selected = selectedIndex === index;
-            const barWidth = Math.max(3, band - gap);
-            const x = margin.left + band * index + gap / 2;
             return (
               <Tooltip<SVGPathElement> key={point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
                 {(triggerProps) => (
@@ -210,7 +247,7 @@ export function CartesianChart({
                     {...interactionProps(index, triggerProps)}
                     data-chart-item
                     data-selected={selected}
-                    d={verticalBarPath(x, point.y, barWidth, baseline, variant === "histogram" ? 4 : 8)}
+                    d={verticalBarPath(point.left, point.y, point.barWidth, baseline, histogramData ? 0 : 8)}
                     className={cn("chart-bar-rise-vertical", itemClasses(selected))}
                   />
                 )}
@@ -228,7 +265,16 @@ export function CartesianChart({
         <line x1={margin.left} x2={margin.left + chartWidth} y1={baseline} y2={baseline} className="pointer-events-none stroke-ink stroke-[1.5]" />
         <line x1={margin.left} x2={margin.left} y1={margin.top} y2={baseline} className="pointer-events-none stroke-ink stroke-[1.5]" />
 
-        {!horizontal && points.map((point) => (
+        {histogramData && [lowerBound, ...histogramData.map((item) => item.histogram.upperBound)].map((boundary) => (
+          <g key={boundary}>
+            <line x1={intervalPosition(boundary)} x2={intervalPosition(boundary)} y1={baseline} y2={baseline + 5} className="stroke-ink stroke-1" />
+            <text x={intervalPosition(boundary)} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
+              {boundary.toLocaleString("pt-BR")}
+            </text>
+          </g>
+        ))}
+
+        {!horizontal && !histogramData && points.map((point) => (
           <text key={point.item.label} x={point.x} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
             {point.item.label.length > 18 ? `${point.item.label.slice(0, 16)}…` : point.item.label}
           </text>

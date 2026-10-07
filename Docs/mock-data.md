@@ -54,6 +54,22 @@ O frontend utilizará os arquivos para desenvolver e testar:
 - mensagens de sucesso e erro;
 - tela de revisão das 25 perguntas e dos 3 metadados.
 
+### Metadados demonstrativos dos histogramas
+
+`Frontend/src/feats/home/dashboard-data.ts` contém valores estáticos de apresentação,
+não resultados calculados a partir de `Mocks/forms/`. Para Q03, Q04, Q07 e Q09,
+cada classe inclui `histograma` com `limiteInferior`, `limiteSuperior` e
+`densidade`. A densidade absoluta já está definida nesses dados demonstrativos
+como `fi / amplitude`; o componente apenas converte os valores em coordenadas.
+
+Para representar barras de largura definida, as últimas classes antes abertas
+foram delimitadas no cenário demonstrativo: Q04 usa `6–10`, Q07 usa
+`R$ 300–500` e Q09 usa `6–12`. Q03 mantém `12–16`, com amplitude duas vezes
+maior que as primeiras classes. As frequências absolutas não foram alteradas.
+Esses limites não fixam o agrupamento da pesquisa real: sua definição, a inclusão
+das fronteiras e o cálculo das densidades ficarão no backend, junto da análise
+estatística. Polígonos de frequência e dispersão não foram implementados.
+
 ## Uso no backend
 
 O backend utilizará os arquivos para aprender e implementar:

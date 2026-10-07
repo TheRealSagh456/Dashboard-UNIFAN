@@ -60,7 +60,6 @@ export function BoxplotChart({
           );
         })}
         <line x1={margin.left} x2={margin.left + chartWidth} y1={margin.top + chartHeight} y2={margin.top + chartHeight} className="stroke-ink stroke-[1.5]" />
-        <line x1={margin.left} x2={margin.left} y1={margin.top} y2={margin.top + chartHeight} className="stroke-ink stroke-[1.5]" />
         {activeValue !== null && (
           <line x1={position(activeValue)} x2={position(activeValue)} y1={margin.top} y2={margin.top + chartHeight} className="stroke-brand-500 stroke-1 [stroke-dasharray:5_5]" />
         )}
@@ -73,7 +72,6 @@ export function BoxplotChart({
             y={centerY - 46}
             width={Math.max(2, position(data.thirdQuartile) - position(data.firstQuartile))}
             height="92"
-            rx="12"
             className="fill-brand-100 stroke-brand-600 stroke-2"
           />
           <line x1={position(data.median)} y1={centerY - 46} x2={position(data.median)} y2={centerY + 46} className="stroke-brand-700 stroke-[4]" />
@@ -133,9 +131,6 @@ export function BoxplotChart({
         ))}
         <text x={margin.left + chartWidth / 2} y={height - 8} textAnchor="middle" className="fill-ink text-xs font-semibold">
           {xLabel}
-        </text>
-        <text x="16" y={centerY} textAnchor="middle" transform={`rotate(-90 16 ${centerY})`} className="fill-ink text-xs font-semibold">
-          Distribuição
         </text>
       </svg>
     </div>
