@@ -267,6 +267,21 @@ realizada e suas consequências.
   As últimas classes abertas de Q04, Q07 e Q09 receberam limites finitos apenas
   no cenário demonstrativo, sem alteração das frequências.
 
+## DEC-018 - Margens na captura do PDF de tela atual
+
+- **Situação:** aceita
+- **Decisão:** zerar as margens horizontais físicas e lógicas somente no clone
+  passado a `toPng` pelo PDF de tela atual, mantendo a área de captura e o ajuste
+  proporcional A4. Neutralizar `marginInline` evita que a serialização restaure
+  a margem original sobre `marginLeft` e `marginRight`.
+- **Motivo:** o `main` centralizado tem margens automáticas positivas em janelas
+  largas. A biblioteca copiava essas margens calculadas sem incluir sua extensão
+  no tamanho da imagem, deslocando o conteúdo e cortando a lateral direita.
+- **Consequências:** o layout da tela não é alterado; JPEG, relatório completo,
+  estilos dos gráficos e exportações de dados mantêm seus fluxos existentes.
+  A regressão deve cobrir larguras acima do limite de 1280 px do conteúdo, menu
+  expandido/recolhido e ambos os temas, além de conferir os demais formatos.
+
 ## Decisões pendentes
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |
