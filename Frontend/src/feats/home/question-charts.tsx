@@ -1,4 +1,4 @@
-import { BoxplotChart, CartesianChart, PieChart } from "../../components";
+import { BoxplotChart, CartesianChart, PieChart, Text } from "../../components";
 import {
   totalRespostasValidas,
   type PerguntaDashboard,
@@ -24,6 +24,11 @@ function dadosCartesianos(pergunta: PerguntaDashboard) {
     label: item.dados,
     value: item.fi,
     detail: `${((item.fi / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% das respostas válidas`,
+    histogram: item.histograma && {
+      lowerBound: item.histograma.limiteInferior,
+      upperBound: item.histograma.limiteSuperior,
+      density: item.histograma.densidade,
+    },
   }));
 }
 
@@ -76,22 +81,35 @@ export function VisualizacaoPergunta({
     : rotulosQuantitativos[pergunta.id] ?? pergunta.unidade ?? "Dados";
 
   return (
-    <CartesianChart
-      key={`${pergunta.id}-${grafico}`}
-      data={dadosCartesianos(pergunta)}
-      variant={
-        grafico === "Barras"
-          ? "bars"
-          : grafico === "Pontos"
-            ? "line"
+    <>
+      <CartesianChart
+        key={`${pergunta.id}-${grafico}`}
+        data={dadosCartesianos(pergunta)}
+        variant={
+          grafico === "Barras"
+            ? "bars"
+            : grafico === "Pontos"
+              ? "line"
+              : grafico === "Histograma"
+                ? "histogram"
+                : "columns"
+        }
+        xLabel={grafico === "Barras" ? "Quantidade" : eixoDados}
+        yLabel={
+          grafico === "Barras"
+            ? "Categorias"
             : grafico === "Histograma"
-              ? "histogram"
-              : "columns"
-      }
-      xLabel={grafico === "Barras" ? "Quantidade" : eixoDados}
-      yLabel={grafico === "Barras" ? "Categorias" : "Quantidade"}
-      ariaLabel={`${grafico} da pergunta ${pergunta.codigo}`}
-      className="pt-4"
-    />
+              ? "Densidade de frequência"
+              : "Quantidade"
+        }
+        ariaLabel={`${grafico} da pergunta ${pergunta.codigo}`}
+        className="pt-4"
+      />
+      {grafico === "Histograma" && (
+        <Text variant="caption" tone="muted" className="mt-2">
+          A área de cada barra representa a quantidade de respostas. Consulte o intervalo e a frequência no tooltip.
+        </Text>
+      )}
+    </>
   );
 }

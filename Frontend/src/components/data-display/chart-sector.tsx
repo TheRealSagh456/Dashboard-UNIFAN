@@ -40,11 +40,32 @@ function describeSector(
   innerRadius: number,
   center: number,
 ) {
+  if (endAngle <= startAngle) return ''
+
   const outerStart = polarPoint(center, outerRadius, startAngle)
   const outerEnd = polarPoint(center, outerRadius, endAngle)
   const innerEnd = polarPoint(center, innerRadius, endAngle)
   const innerStart = polarPoint(center, innerRadius, startAngle)
   const largeArc = endAngle - startAngle > 180 ? 1 : 0
+
+  // Um arco único com início e fim no mesmo ponto não desenha um círculo SVG.
+  if (endAngle - startAngle >= 360) {
+    const outerMiddle = polarPoint(center, outerRadius, startAngle + 180)
+    const innerMiddle = polarPoint(center, innerRadius, startAngle + 180)
+
+    return [
+      `M ${outerStart.x} ${outerStart.y}`,
+      `A ${outerRadius} ${outerRadius} 0 1 1 ${outerMiddle.x} ${outerMiddle.y}`,
+      `A ${outerRadius} ${outerRadius} 0 1 1 ${outerStart.x} ${outerStart.y}`,
+      'Z',
+      ...(innerRadius > 0 ? [
+        `M ${innerStart.x} ${innerStart.y}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${innerMiddle.x} ${innerMiddle.y}`,
+        `A ${innerRadius} ${innerRadius} 0 1 0 ${innerStart.x} ${innerStart.y}`,
+        'Z',
+      ] : []),
+    ].join(' ')
+  }
 
   return [
     `M ${outerStart.x} ${outerStart.y}`,

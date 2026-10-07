@@ -249,6 +249,24 @@ realizada e suas consequências.
   exige Node 24+, declarado no `package.json`. O [roteiro](./backend-guide.md)
   descreve o schema, a conexão compartilhada e as etapas de validação.
 
+## DEC-017 - Adequação visual dos gráficos existentes
+
+- **Situação:** aceita
+- **Decisão:** manter os componentes compartilhados e corrigir a geometria dos
+  histogramas para barras contíguas, retangulares e com larguras proporcionais
+  aos intervalos. Usar a densidade absoluta recebida nos dados para que a área,
+  não apenas a altura, represente a frequência. Exibir a frequência absoluta
+  nos tooltips. Tornar a caixa do boxplot retangular e remover seu eixo vertical
+  sem grandeza. Garantir setores circulares de 100% e omitir setores de zero.
+- **Motivo:** adequar a representação estatística sem redesenhar a interface,
+  duplicar gráficos ou introduzir tipos fora do escopo solicitado.
+- **Consequências:** definição de classes e cálculo de densidades permanecem no
+  backend; o frontend demonstrativo recebe limites e densidades estáticos.
+  Dashboard, catálogo e relatório PDF reutilizam os mesmos componentes. Não
+  foram adicionados polígonos, dispersão nem novas opções de visualização.
+  As últimas classes abertas de Q04, Q07 e Q09 receberam limites finitos apenas
+  no cenário demonstrativo, sem alteração das frequências.
+
 ## Decisões pendentes
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |

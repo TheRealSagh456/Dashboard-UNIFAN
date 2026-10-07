@@ -26,6 +26,15 @@ export type ResumoBoxplot = {
   maximo: number;
 };
 
+export type ClasseHistograma = {
+  limiteInferior: number;
+  limiteSuperior: number;
+  densidade: number;
+};
+
+// Limites e densidades abaixo são demonstrativos e já vêm prontos, como virão
+// da API. O frontend apenas transforma essas medidas em coordenadas do gráfico.
+
 export type PerguntaDashboard = {
   id: string;
   codigo: string;
@@ -33,7 +42,7 @@ export type PerguntaDashboard = {
   tipo: TipoPergunta;
   categoria: CategoriaPergunta;
   unidade?: string;
-  distribuicao: Array<{ dados: string; fi: number }>;
+  distribuicao: Array<{ dados: string; fi: number; histograma?: ClasseHistograma }>;
   medidas: MedidasPergunta;
   graficos: TipoGrafico[];
   boxplot?: ResumoBoxplot;
@@ -62,7 +71,7 @@ function criarPergunta(
   codigo: string,
   enunciado: string,
   categoria: CategoriaPergunta,
-  distribuicao: Array<[string, number]>,
+  distribuicao: Array<[string, number, ClasseHistograma?]>,
   medidas: MedidasPergunta,
   unidade?: string,
   boxplot?: ResumoBoxplot,
@@ -77,7 +86,7 @@ function criarPergunta(
         : "Qualitativa",
     categoria,
     unidade,
-    distribuicao: distribuicao.map(([dados, fi]) => ({ dados, fi })),
+    distribuicao: distribuicao.map(([dados, fi, histograma]) => ({ dados, fi, histograma })),
     medidas,
     graficos: graficosPorCategoria[categoria],
     boxplot,
@@ -148,13 +157,13 @@ export const perguntasDashboard: PerguntaDashboard[] = [
     "Quantas horas por dia você usa a internet?",
     "Contínua",
     [
-      ["0–2", 92],
-      ["2–4", 180],
-      ["4–6", 226],
-      ["6–8", 208],
-      ["8–10", 150],
-      ["10–12", 78],
-      ["12–16", 65],
+      ["0–2", 92, { limiteInferior: 0, limiteSuperior: 2, densidade: 46 }],
+      ["2–4", 180, { limiteInferior: 2, limiteSuperior: 4, densidade: 90 }],
+      ["4–6", 226, { limiteInferior: 4, limiteSuperior: 6, densidade: 113 }],
+      ["6–8", 208, { limiteInferior: 6, limiteSuperior: 8, densidade: 104 }],
+      ["8–10", 150, { limiteInferior: 8, limiteSuperior: 10, densidade: 75 }],
+      ["10–12", 78, { limiteInferior: 10, limiteSuperior: 12, densidade: 39 }],
+      ["12–16", 65, { limiteInferior: 12, limiteSuperior: 16, densidade: 16.25 }],
     ],
     {
       media: "6,1",
@@ -177,13 +186,13 @@ export const perguntasDashboard: PerguntaDashboard[] = [
     "Quantas horas por dia você passa em redes sociais?",
     "Contínua",
     [
-      ["0–1", 170],
-      ["1–2", 242],
-      ["2–3", 228],
-      ["3–4", 160],
-      ["4–5", 96],
-      ["5–6", 54],
-      ["6 ou mais", 49],
+      ["0–1", 170, { limiteInferior: 0, limiteSuperior: 1, densidade: 170 }],
+      ["1–2", 242, { limiteInferior: 1, limiteSuperior: 2, densidade: 242 }],
+      ["2–3", 228, { limiteInferior: 2, limiteSuperior: 3, densidade: 228 }],
+      ["3–4", 160, { limiteInferior: 3, limiteSuperior: 4, densidade: 160 }],
+      ["4–5", 96, { limiteInferior: 4, limiteSuperior: 5, densidade: 96 }],
+      ["5–6", 54, { limiteInferior: 5, limiteSuperior: 6, densidade: 54 }],
+      ["6–10", 49, { limiteInferior: 6, limiteSuperior: 10, densidade: 12.25 }],
     ],
     {
       media: "2,6",
@@ -263,12 +272,12 @@ export const perguntasDashboard: PerguntaDashboard[] = [
     "Quanto você gasta, em média por mês, com assinaturas ou serviços de tecnologia?",
     "Contínua",
     [
-      ["R$ 0–50", 360],
-      ["R$ 50–100", 245],
-      ["R$ 100–150", 170],
-      ["R$ 150–200", 105],
-      ["R$ 200–300", 62],
-      ["Acima de R$ 300", 57],
+      ["R$ 0–50", 360, { limiteInferior: 0, limiteSuperior: 50, densidade: 7.2 }],
+      ["R$ 50–100", 245, { limiteInferior: 50, limiteSuperior: 100, densidade: 4.9 }],
+      ["R$ 100–150", 170, { limiteInferior: 100, limiteSuperior: 150, densidade: 3.4 }],
+      ["R$ 150–200", 105, { limiteInferior: 150, limiteSuperior: 200, densidade: 2.1 }],
+      ["R$ 200–300", 62, { limiteInferior: 200, limiteSuperior: 300, densidade: 0.62 }],
+      ["R$ 300–500", 57, { limiteInferior: 300, limiteSuperior: 500, densidade: 0.285 }],
     ],
     {
       media: "R$ 104,30",
@@ -320,13 +329,13 @@ export const perguntasDashboard: PerguntaDashboard[] = [
     "Quantas horas de sono você perde por semana devido ao uso de tecnologia à noite?",
     "Contínua",
     [
-      ["0–1", 310],
-      ["1–2", 255],
-      ["2–3", 178],
-      ["3–4", 112],
-      ["4–5", 64],
-      ["5–6", 35],
-      ["6 ou mais", 45],
+      ["0–1", 310, { limiteInferior: 0, limiteSuperior: 1, densidade: 310 }],
+      ["1–2", 255, { limiteInferior: 1, limiteSuperior: 2, densidade: 255 }],
+      ["2–3", 178, { limiteInferior: 2, limiteSuperior: 3, densidade: 178 }],
+      ["3–4", 112, { limiteInferior: 3, limiteSuperior: 4, densidade: 112 }],
+      ["4–5", 64, { limiteInferior: 4, limiteSuperior: 5, densidade: 64 }],
+      ["5–6", 35, { limiteInferior: 5, limiteSuperior: 6, densidade: 35 }],
+      ["6–12", 45, { limiteInferior: 6, limiteSuperior: 12, densidade: 7.5 }],
     ],
     {
       media: "2,1",
