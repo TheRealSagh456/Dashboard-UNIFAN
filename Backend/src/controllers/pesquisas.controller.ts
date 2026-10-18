@@ -4,15 +4,12 @@ import {
   obterPesquisaAtual,
 } from "../services/pesquisas.service.ts";
 
-// TODO(membros): quando os services consultarem o Knex, aguardar suas Promises
-// com await nos dois handlers. Manter SQL e regras no service (etapas 1 e 2).
-
 export async function obterPesquisaAtualController(
   _request: FastifyRequest,
   reply: FastifyReply,
 ) {
   try {
-    const pesquisa = obterPesquisaAtual();
+    const pesquisa = await obterPesquisaAtual();
     if (!pesquisa) {
       return reply.status(404).send({
         error: {
@@ -38,7 +35,7 @@ export async function limparPesquisaAtualController(
   reply: FastifyReply,
 ) {
   try {
-    const result = limparDadosDaPesquisaAtual();
+    const result = await limparDadosDaPesquisaAtual();
     return reply.send({ data: result });
   } catch {
     return reply.status(500).send({

@@ -31,9 +31,8 @@ import {
   type DashboardSidebarItem,
 } from "../components";
 import {
-  perguntasDashboard,
-  pesquisaDemo,
-  totalRespostasValidas,
+  type Dashboard,
+  type PesquisaDashboard,
   type CategoriaPergunta,
   type PerguntaDashboard,
   type TipoGrafico,
@@ -44,11 +43,8 @@ import { ExportDialog } from "../feats/home/export-dialog";
 import { TabelaFrequencias } from "../feats/home/frequency-table";
 import { VisualizacaoPergunta } from "../feats/home/question-charts";
 import { cn } from "../lib/cn";
-import { MOCK_REQUEST_DELAY_MS } from "../services/api";
-import {
-  limparPesquisaAtual,
-  obterPesquisaAtual,
-} from "../services/pesquisas";
+import { carregarDashboard } from "../services/dashboard";
+import { limparPesquisaAtual } from "../services/pesquisas";
 
 const todasCategorias: CategoriaPergunta[] = [
   "Discreta",
@@ -104,7 +100,7 @@ function CartaoPergunta({
       </div>
       <div className="mt-auto flex items-end justify-between gap-3 pt-6">
         <Text variant="caption" tone="muted">
-          {totalRespostasValidas(pergunta).toLocaleString("pt-BR")} respostas · {pergunta.graficos.length} visualizações
+          {pergunta.respostasValidas.toLocaleString("pt-BR")} respostas · {pergunta.graficos.length} visualizações
         </Text>
         <ArrowRight className="size-4 text-brand-600 transition group-hover:translate-x-1" aria-hidden="true" />
       </div>
@@ -112,28 +108,18 @@ function CartaoPergunta({
   );
 }
 
-function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
+function VisaoGeral({ pesquisa, perguntas }: { pesquisa: PesquisaDashboard; perguntas: PerguntaDashboard[] }) {
+  const pesquisaId = pesquisa.id;
   const navigate = useNavigate();
-  const ausenciasPorPergunta = perguntasDashboard
+  const ausenciasPorPergunta = perguntas
     .map((pergunta) => ({
       pergunta,
-      ausentes: pesquisaDemo.totalRespostas - totalRespostasValidas(pergunta),
+      ausentes: pergunta.respostasAusentes,
     }))
     .filter((item) => item.ausentes > 0)
     .sort((a, b) => b.ausentes - a.ausentes);
-  const totalAusencias = ausenciasPorPergunta.reduce(
-    (total, item) => total + item.ausentes,
-    0,
-  );
-  const totalEsperado =
-    pesquisaDemo.totalRespostas * perguntasDashboard.length;
-  const percentualAusencias = (totalAusencias / totalEsperado) * 100;
-  const categoriasDonut = todasCategorias.map((categoria) => ({
-      label: categoria,
-      value: perguntasDashboard.filter(
-        (pergunta) => pergunta.categoria === categoria,
-      ).length,
-    }));
+  const { totalAusencias, percentualAusencias, distribuicaoTipos: categoriasDonut } = pesquisa;
+  const dataImportacao = new Date(pesquisa.importadoEm.includes("T") ? pesquisa.importadoEm : pesquisa.importadoEm.replace(" ", "T") + "Z").toLocaleString("pt-BR");
 
   return (
     <main className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
@@ -142,7 +128,7 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
           <Text variant="eyebrow" tone="accent">Visão geral</Text>
           <Text as="h1" variant="h1" className="mt-3">Resumo da pesquisa</Text>
           <Text tone="muted" className="mt-2">
-            Principais indicadores do arquivo processado em {pesquisaDemo.importadoEm}.
+            Principais indicadores do arquivo processado em {dataImportacao}.
           </Text>
         </div>
         <Button
@@ -156,8 +142,8 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
       </section>
 
       <section className="mt-8 grid gap-3 sm:grid-cols-3" aria-label="Indicadores da pesquisa">
-        <MetricCard label="Respostas recebidas" value="1.000" icon={Users} />
-        <MetricCard label="Perguntas importadas" value="25" icon={ListChecks} tone="positive" />
+        <MetricCard label="Respostas recebidas" value={pesquisa.totalRespostas.toLocaleString("pt-BR")} icon={Users} />
+        <MetricCard label="Perguntas importadas" value={String(pesquisa.totalPerguntas)} icon={ListChecks} tone="positive" />
         <MetricCard
           label={`${percentualAusencias.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}% dos dados esperados`}
           value={String(totalAusencias)}
@@ -174,7 +160,7 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
           </Text>
           <DonutChart
             data={categoriasDonut}
-            centerValue={String(perguntasDashboard.length)}
+            centerValue={String(perguntas.length)}
             centerLabel="perguntas"
             className="mt-5 flex-1 justify-center"
             layout="stacked"
@@ -192,6 +178,7 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
             </div>
             <Badge tone="warning">{totalAusencias} ausências</Badge>
           </div>
+          {ausenciasPorPergunta.length === 0 && <Text tone="muted" className="mt-5">Todas as perguntas foram respondidas.</Text>}
           <div className="mt-5 grid gap-2">
             {ausenciasPorPergunta.slice(0, 6).map(({ pergunta, ausentes }) => (
               <Link
@@ -203,7 +190,7 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
                 <span className="min-w-0">
                   <Text as="span" variant="caption" className="block truncate">{pergunta.enunciado}</Text>
                   <span className="mt-1 block h-1.5 overflow-hidden rounded-full bg-surface">
-                    <span className="block h-full min-w-1 rounded-full bg-brand-500" style={{ width: `${(ausentes / pesquisaDemo.totalRespostas) * 100}%` }} />
+                    <span className="block h-full min-w-1 rounded-full bg-brand-500" style={{ width: `${pergunta.percentualAusentes}%` }} />
                   </span>
                 </span>
                 <Text as="strong" variant="caption" className="tabular-nums">{ausentes}</Text>
@@ -216,7 +203,7 @@ function VisaoGeral({ pesquisaId }: { pesquisaId: string }) {
   );
 }
 
-function CatalogoPerguntas({ pesquisaId }: { pesquisaId: string }) {
+function CatalogoPerguntas({ pesquisaId, perguntas }: { pesquisaId: string; perguntas: PerguntaDashboard[] }) {
   const [busca, setBusca] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<TipoPergunta | "todos">("todos");
   const [filtroCategoria, setFiltroCategoria] = useState<CategoriaPergunta | "todas">("todas");
@@ -224,7 +211,7 @@ function CatalogoPerguntas({ pesquisaId }: { pesquisaId: string }) {
     filtroTipo === "todos" ? todasCategorias : categoriasPorTipo[filtroTipo];
   const perguntasFiltradas = useMemo(() => {
     const termo = normalizarBusca(busca);
-    return perguntasDashboard.filter((pergunta) => {
+    return perguntas.filter((pergunta) => {
       const correspondeBusca = normalizarBusca(
         `${pergunta.codigo} ${pergunta.enunciado} ${pergunta.tipo} ${pergunta.categoria}`,
       ).includes(termo);
@@ -232,7 +219,7 @@ function CatalogoPerguntas({ pesquisaId }: { pesquisaId: string }) {
       const correspondeCategoria = filtroCategoria === "todas" || pergunta.categoria === filtroCategoria;
       return correspondeBusca && correspondeTipo && correspondeCategoria;
     });
-  }, [busca, filtroCategoria, filtroTipo]);
+  }, [busca, filtroCategoria, filtroTipo, perguntas]);
 
   function alterarFiltroTipo(value: TipoPergunta | "todos") {
     setFiltroTipo(value);
@@ -270,7 +257,7 @@ function CatalogoPerguntas({ pesquisaId }: { pesquisaId: string }) {
 
       <section className="mt-10">
         <Text tone="muted">
-          {perguntasFiltradas.length} de {perguntasDashboard.length} disponíveis
+          {perguntasFiltradas.length} de {perguntas.length} disponíveis
         </Text>
 
         {perguntasFiltradas.length > 0 ? (
@@ -301,6 +288,7 @@ function CartoesMedidas({ pergunta }: { pergunta: PerguntaDashboard }) {
   return (
     <section>
       <Text as="h2" variant="h3">Medidas estatísticas</Text>
+      {medidas.length === 0 && <Text tone="muted" className="mt-3">Não há respostas válidas para calcular as medidas.</Text>}
       <div className="mt-3 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {medidas.map((medida) => (
           <MetricCard key={medida.label} label={medida.label} value={medida.value} icon={medida.icon} />
@@ -313,17 +301,19 @@ function CartoesMedidas({ pergunta }: { pergunta: PerguntaDashboard }) {
 function AnalisePergunta({
   pesquisaId,
   pergunta,
+  perguntas,
 }: {
   pesquisaId: string;
   pergunta: PerguntaDashboard;
+  perguntas: PerguntaDashboard[];
 }) {
-  const [grafico, setGrafico] = useState<TipoGrafico>(pergunta.graficos[0]);
+  const [grafico, setGrafico] = useState<TipoGrafico>(pergunta.graficoRecomendado);
   const navigate = useNavigate();
-  const indice = perguntasDashboard.findIndex((item) => item.id === pergunta.id);
-  const anterior = perguntasDashboard[indice - 1];
-  const proxima = perguntasDashboard[indice + 1];
-  const validas = totalRespostasValidas(pergunta);
-  const ausentes = pesquisaDemo.totalRespostas - validas;
+  const indice = perguntas.findIndex((item) => item.id === pergunta.id);
+  const anterior = perguntas[indice - 1];
+  const proxima = perguntas[indice + 1];
+  const validas = pergunta.respostasValidas;
+  const ausentes = pergunta.respostasAusentes;
 
   function navegar(perguntaId: string) {
     navigate(caminhoPergunta(pesquisaId, perguntaId));
@@ -428,40 +418,43 @@ function PerguntaNaoEncontrada({ pesquisaId }: { pesquisaId: string }) {
 export function HomePage() {
   const { pathname } = useLocation();
   const navigate = useNavigate();
-  const { pesquisaId = pesquisaDemo.id, perguntaId } = useParams();
+  const { pesquisaId, perguntaId } = useParams();
   const [menuRecolhido, setMenuRecolhido] = useState(
     () => window.localStorage.getItem("dashboard-menu-recolhido") === "true",
   );
   const [menuMobileAberto, setMenuMobileAberto] = useState(false);
-  const [caminhoCarregado, setCaminhoCarregado] = useState<string | null>(null);
+  const [tentativa, setTentativa] = useState(0);
+  const chave = (pesquisaId ?? "atual") + ":" + tentativa;
+  const [estado, setEstado] = useState<{ chave: string; dados: Dashboard | null; erro: string | null }>({ chave: "", dados: null, erro: null });
+  const dashboard = estado.chave === chave ? estado.dados : null;
+  const pesquisa = dashboard?.pesquisa;
+  const perguntas = dashboard?.perguntas ?? [];
+  const idPesquisa = pesquisa?.id ?? pesquisaId ?? "atual";
   const [confirmacaoAberta, setConfirmacaoAberta] = useState(false);
   const [exportacaoAberta, setExportacaoAberta] = useState(false);
   const [limpandoPesquisa, setLimpandoPesquisa] = useState(false);
   const [erroLimpeza, setErroLimpeza] = useState<string | null>(null);
-  const [nomeArquivoOriginal, setNomeArquivoOriginal] = useState(
-    pesquisaDemo.nomeArquivoOriginal,
-  );
   const dashboardRootRef = useRef<HTMLDivElement>(null);
   const dashboardContentRef = useRef<HTMLDivElement>(null);
   const pergunta = perguntaId
-    ? perguntasDashboard.find((item) => item.id === perguntaId)
+    ? perguntas.find((item) => item.id === perguntaId)
     : undefined;
   const emPerguntas = pathname.includes("/perguntas");
   const emCatalogo = emPerguntas && !perguntaId;
-  const conteudoCarregando = caminhoCarregado !== pathname;
+  const conteudoCarregando = estado.chave !== chave || (!estado.dados && !estado.erro);
   const itens: DashboardSidebarItem[] = [
     {
       label: "Visão geral",
       icon: LayoutDashboard,
-      to: `/home/${pesquisaId}`,
+      to: `/home/${idPesquisa}`,
       active: !emPerguntas,
     },
     {
       label: "Perguntas",
       icon: ListChecks,
-      to: caminhoPerguntas(pesquisaId),
+      to: caminhoPerguntas(idPesquisa),
       active: emPerguntas,
-      count: perguntasDashboard.length,
+      count: perguntas.length,
     },
     {
       label: "Exportar",
@@ -486,7 +479,7 @@ export function HomePage() {
   function navegar(to: string) {
     setMenuMobileAberto(false);
     if (to === "#export") {
-      setExportacaoAberta(true);
+      if (dashboard) setExportacaoAberta(true);
       return;
     }
     if (to === "/import") {
@@ -528,37 +521,28 @@ export function HomePage() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
-    const timer = window.setTimeout(
-      () => setCaminhoCarregado(pathname),
-      MOCK_REQUEST_DELAY_MS,
-    );
-    return () => window.clearTimeout(timer);
   }, [pathname]);
 
   useEffect(() => {
     let ativo = true;
-    obterPesquisaAtual()
-      .then((pesquisaAtual) => {
-        if (ativo) setNomeArquivoOriginal(pesquisaAtual.nomeArquivoOriginal);
-      })
-      .catch(() => {
-        // O mock local permanece como fallback enquanto a importação persistente
-        // ainda não alimenta os metadados da pesquisa no backend.
+    carregarDashboard(pesquisaId)
+      .then((dados) => { if (ativo) setEstado({ chave, dados, erro: null }); })
+      .catch((erro: unknown) => {
+        if (ativo) setEstado({ chave, dados: null, erro: erro instanceof Error ? erro.message : "Não foi possível carregar a pesquisa." });
       });
-    return () => {
-      ativo = false;
-    };
-  }, []);
+    return () => { ativo = false; };
+  }, [pesquisaId, chave]);
 
   return (
     <div ref={dashboardRootRef} className="min-h-screen bg-canvas text-ink">
-      {exportacaoAberta && (
+      {exportacaoAberta && dashboard && (
         <ExportDialog
-          questions={perguntasDashboard}
+          pesquisaId={dashboard.pesquisa.id}
+          questions={perguntas}
           currentQuestionId={perguntaId}
           currentTarget={dashboardContentRef}
-          sourceFileName={nomeArquivoOriginal}
-          totalResponses={pesquisaDemo.totalRespostas}
+          sourceFileName={dashboard.pesquisa.nomeArquivoOriginal}
+          totalResponses={dashboard.pesquisa.totalRespostas}
           onClose={fecharExportacao}
         />
       )}
@@ -581,7 +565,7 @@ export function HomePage() {
           collapsed={menuRecolhido}
           onToggle={alternarMenu}
           onNavigate={navegar}
-          footer={`${pesquisaDemo.nome} · ${pesquisaDemo.totalRespostas.toLocaleString("pt-BR")} respostas`}
+          footer={pesquisa ? `${pesquisa.nome} · ${pesquisa.totalRespostas.toLocaleString("pt-BR")} respostas` : "Pesquisa"}
         />
       </aside>
 
@@ -600,7 +584,7 @@ export function HomePage() {
             <DashboardSidebar
               items={itens}
               onNavigate={navegar}
-              footer={`${pesquisaDemo.nome} · ${pesquisaDemo.totalRespostas.toLocaleString("pt-BR")} respostas`}
+              footer={pesquisa ? `${pesquisa.nome} · ${pesquisa.totalRespostas.toLocaleString("pt-BR")} respostas` : "Pesquisa"}
             />
           </aside>
         </div>
@@ -635,16 +619,27 @@ export function HomePage() {
             <HomeContentSkeleton
               variant={perguntaId ? "question" : emCatalogo ? "catalog" : "overview"}
             />
+          ) : estado.erro ? (
+            <main className="mx-auto max-w-3xl px-4 py-12">
+              <Card>
+                <Text as="h1" variant="h2">Não foi possível abrir a pesquisa</Text>
+                <Text tone="muted" className="mt-3">{estado.erro}</Text>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <Button onClick={() => setTentativa((valor) => valor + 1)}>Tentar novamente</Button>
+                  <Button variant="outline" onClick={() => navigate("/import")}>Importar arquivo</Button>
+                </div>
+              </Card>
+            </main>
           ) : perguntaId ? (
             pergunta ? (
-              <AnalisePergunta key={pergunta.id} pesquisaId={pesquisaId} pergunta={pergunta} />
+              <AnalisePergunta key={pergunta.id} pesquisaId={idPesquisa} pergunta={pergunta} perguntas={perguntas} />
             ) : (
-              <PerguntaNaoEncontrada pesquisaId={pesquisaId} />
+              <PerguntaNaoEncontrada pesquisaId={idPesquisa} />
             )
           ) : emCatalogo ? (
-            <CatalogoPerguntas pesquisaId={pesquisaId} />
+            <CatalogoPerguntas pesquisaId={idPesquisa} perguntas={perguntas} />
           ) : (
-            <VisaoGeral pesquisaId={pesquisaId} />
+            pesquisa && <VisaoGeral pesquisa={pesquisa} perguntas={perguntas} />
           )}
         </div>
       </div>

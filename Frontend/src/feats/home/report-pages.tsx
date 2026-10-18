@@ -7,8 +7,6 @@ import {
 } from "lucide-react";
 import { Badge, Card, MetricCard, Tag, Text } from "../../components";
 import {
-  pesquisaDemo,
-  totalRespostasValidas,
   type PerguntaDashboard,
   type TipoGrafico,
 } from "./dashboard-data";
@@ -140,8 +138,8 @@ export function ReportQuestionPage({
   pageNumber: number;
   totalPages: number;
 }) {
-  const validas = totalRespostasValidas(question);
-  const ausentes = pesquisaDemo.totalRespostas - validas;
+  const validas = question.respostasValidas;
+  const ausentes = question.respostasAusentes;
 
   return (
     <article

@@ -3,6 +3,22 @@
 Os mocks representam somente os arquivos brutos que poderão chegar do Google
 Forms. Eles não antecipam nem fornecem os resultados estatísticos do backend.
 
+## Implementação atual
+
+Os leitores, a revisão, a confirmação e o armazenamento já estão implementados
+em Backend/src/importacao e Backend/src/services/importacao.service.ts.
+Consulte [backend-guide.md](./backend-guide.md) e [api.md](./api.md).
+Os exemplos didáticos abaixo explicam a origem das regras; o código do backend
+é a implementação executável. A importação aceita outros questionários e não
+depende do tema nem das inconsistências da amostra fornecida para desenvolvimento.
+
+Os testes importam e confirmam os dois mocks, conferem 1.000 participantes,
+25 perguntas, três metadados, 20 ausências e comparam todos os valores tratados
+das perguntas entre CSV e XLSX. Metadados de data não entram nessa comparação.
+Datas do CSV permanecem originais; Excel usa calendário ISO sem Z, conservando
+a resolução extraída. Não há ajuste silencioso da diferença de precisão citada
+no histórico deste documento. A suíte também gera uma planilha XLS (BIFF8).
+
 ## Localização
 
 Os arquivos estão em [../Mocks/forms](../Mocks/forms):
@@ -54,21 +70,15 @@ O frontend utilizará os arquivos para desenvolver e testar:
 - mensagens de sucesso e erro;
 - tela de revisão das 25 perguntas e dos 3 metadados.
 
-### Metadados demonstrativos dos histogramas
+### Dashboard integrado
 
-`Frontend/src/feats/home/dashboard-data.ts` contém valores estáticos de apresentação,
-não resultados calculados a partir de `Mocks/forms/`. Para Q03, Q04, Q07 e Q09,
-cada classe inclui `histograma` com `limiteInferior`, `limiteSuperior` e
-`densidade`. A densidade absoluta já está definida nesses dados demonstrativos
-como `fi / amplitude`; o componente apenas converte os valores em coordenadas.
+`Frontend/src/feats/home/dashboard-data.ts` contém somente tipos, sem resultados estáticos. A Home e o relatório consomem
+as análises calculadas pelo backend a partir do SQLite. Frequências, quartis,
+limites e densidades não são fornecidos pelos fixtures.
+O catálogo /components mantém exemplos visuais independentes da pesquisa.
 
-Para representar barras de largura definida, as últimas classes antes abertas
-foram delimitadas no cenário demonstrativo: Q04 usa `6–10`, Q07 usa
-`R$ 300–500` e Q09 usa `6–12`. Q03 mantém `12–16`, com amplitude duas vezes
-maior que as primeiras classes. As frequências absolutas não foram alteradas.
-Esses limites não fixam o agrupamento da pesquisa real: sua definição, a inclusão
-das fronteiras e o cálculo das densidades ficarão no backend, junto da análise
-estatística. Polígonos de frequência e dispersão não foram implementados.
+Os testes confirmam CSV e XLSX e comparam também suas análises, além de verificar
+resultados conhecidos em amostras pequenas e temas diferentes.
 
 ## Uso no backend
 
@@ -97,8 +107,8 @@ Para o backend atual, em Node.js, TypeScript e Fastify, a recomendação é usar
 O SheetJS também lê CSV. Aqui, proponho `csv-parse` para deixar explícitas as
 regras do arquivo textual. As duas leituras convergem para uma matriz de valores
 e usam o mesmo tratamento depois. As duas dependências já estão declaradas no
-backend e são usadas pela exportação mockada; os leitores de importação ainda
-serão implementados pelos membros, seguindo [backend-guide.md](./backend-guide.md).
+backend e são usadas pela importação e exportação persistentes, seguindo
+[backend-guide.md](./backend-guide.md). O upload usa também @fastify/multipart.
 
 Fontes: [formatos e opções de leitura do SheetJS](https://docs.sheetjs.com/docs/api/parse-options/)
 e [opções do csv-parse](https://csv.js.org/parse/options/).

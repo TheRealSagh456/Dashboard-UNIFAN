@@ -1,18 +1,8 @@
 import { Info, Table2 } from "lucide-react";
 import { Card, DataTableSurface, Text, Tooltip } from "../../components";
 import {
-  totalRespostasValidas,
   type PerguntaDashboard,
 } from "./dashboard-data";
-
-type LinhaFrequencia = {
-  classe: number;
-  dados: string;
-  fi: number;
-  fiAcumulada: number;
-  fr: number;
-  frAcumulada: number;
-};
 
 const formatadorInteiro = new Intl.NumberFormat("pt-BR");
 const formatadorDecimal = new Intl.NumberFormat("pt-BR", {
@@ -34,23 +24,6 @@ const definicoes = {
   "fr%": "Frequência relativa multiplicada por 100.",
   "fr% (acu)": "Frequência relativa acumulada multiplicada por 100.",
 };
-
-function calcularFrequencias(pergunta: PerguntaDashboard): LinhaFrequencia[] {
-  const total = totalRespostasValidas(pergunta);
-  let fiAcumulada = 0;
-
-  return pergunta.distribuicao.map((item, index) => {
-    fiAcumulada += item.fi;
-    return {
-      classe: index + 1,
-      dados: item.dados,
-      fi: item.fi,
-      fiAcumulada,
-      fr: item.fi / total,
-      frAcumulada: fiAcumulada / total,
-    };
-  });
-}
 
 function CabecalhoTabela({ nome }: { nome: keyof typeof definicoes }) {
   return (
@@ -104,8 +77,9 @@ export function TabelaFrequencias({
 }: {
   pergunta: PerguntaDashboard;
 }) {
-  const linhas = calcularFrequencias(pergunta);
-  const total = totalRespostasValidas(pergunta);
+  const linhas = pergunta.distribuicao;
+  const ultimaClasse = linhas.at(-1);
+  const total = pergunta.respostasValidas;
 
   return (
     <Card padding="none" className="overflow-hidden">
@@ -182,10 +156,10 @@ export function TabelaFrequencias({
                   {formatadorDecimal.format(linha.frAcumulada)}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
-                  {formatadorPercentual.format(linha.fr * 100)}%
+                  {formatadorPercentual.format(linha.frPercentual)}%
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
-                  {formatadorPercentual.format(linha.frAcumulada * 100)}%
+                  {formatadorPercentual.format(linha.frPercentualAcumulada)}%
                 </td>
               </tr>
             ))}
@@ -201,10 +175,10 @@ export function TabelaFrequencias({
               <td className="px-2 py-3 tabular-nums xl:px-3">
                 {formatadorInteiro.format(total)}
               </td>
-              <td className="px-2 py-3 tabular-nums xl:px-3">1,000</td>
-              <td className="px-2 py-3 tabular-nums xl:px-3">1,000</td>
-              <td className="px-2 py-3 tabular-nums xl:px-3">100,0%</td>
-              <td className="px-2 py-3 tabular-nums xl:px-3">100,0%</td>
+              <td className="px-2 py-3 tabular-nums xl:px-3">{formatadorDecimal.format(ultimaClasse?.frAcumulada ?? 0)}</td>
+              <td className="px-2 py-3 tabular-nums xl:px-3">{formatadorDecimal.format(ultimaClasse?.frAcumulada ?? 0)}</td>
+              <td className="px-2 py-3 tabular-nums xl:px-3">{formatadorPercentual.format(ultimaClasse?.frPercentualAcumulada ?? 0)}%</td>
+              <td className="px-2 py-3 tabular-nums xl:px-3">{formatadorPercentual.format(ultimaClasse?.frPercentualAcumulada ?? 0)}%</td>
             </tr>
           </tfoot>
         </table>
@@ -241,11 +215,11 @@ export function TabelaFrequencias({
               />
               <CampoFrequencia
                 label="fr%"
-                value={`${formatadorPercentual.format(linha.fr * 100)}%`}
+                value={`${formatadorPercentual.format(linha.frPercentual)}%`}
               />
               <CampoFrequencia
                 label="fr% (acu)"
-                value={`${formatadorPercentual.format(linha.frAcumulada * 100)}%`}
+                value={`${formatadorPercentual.format(linha.frPercentualAcumulada)}%`}
               />
             </div>
           </section>

@@ -1,6 +1,6 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
+import { ErroAplicacao } from "../utils/erro-aplicacao.ts";
 import {
-  ErroExportacao,
   gerarExportacaoDados,
 } from "../services/exportacoes.service.ts";
 
@@ -8,6 +8,7 @@ type ExportacaoQuery = {
   format?: string;
   scope?: string;
   questionId?: string;
+  pesquisaId?: string;
 };
 
 export async function exportarDadosController(
@@ -25,7 +26,7 @@ export async function exportarDadosController(
       )
       .send(resultado.conteudo);
   } catch (error) {
-    if (error instanceof ErroExportacao) {
+    if (error instanceof ErroAplicacao) {
       return reply.status(error.statusCode).send({
         error: {
           message: error.message,

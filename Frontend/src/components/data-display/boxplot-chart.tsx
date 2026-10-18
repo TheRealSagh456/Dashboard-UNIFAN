@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { useChartInteraction } from "../../hooks/use-chart-interaction";
 import { cn } from "../../lib/cn";
-import { criarEscalaAgradavel } from "../../utils/chart-scale";
+import { criarEscalaIntervalo } from "../../utils/chart-scale";
+import { formatarValorDoEixo } from "../../utils/chart-layout";
 import { Tooltip } from "../ui/tooltip";
 
 type BoxplotChartProps = {
@@ -31,9 +32,9 @@ export function BoxplotChart({
   const margin = { top: 28, right: 24, bottom: 62, left: 72 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
-  const scale = criarEscalaAgradavel(data.maximum);
+  const scale = criarEscalaIntervalo(data.minimum, data.maximum);
   const position = (value: number) =>
-    margin.left + (value / scale.limite) * chartWidth;
+    margin.left + ((value - scale.inicio) / (scale.limite - scale.inicio)) * chartWidth;
   const values = [
     ["Mínimo", data.minimum],
     ["Q1", data.firstQuartile],
@@ -54,7 +55,7 @@ export function BoxplotChart({
             <g key={tick}>
               <line x1={x} x2={x} y1={margin.top} y2={margin.top + chartHeight} className="stroke-line stroke-1" />
               <text x={x} y={height - 38} textAnchor="middle" className="fill-muted text-[11px]">
-                {tick.toLocaleString("pt-BR")}
+                {formatarValorDoEixo(tick)}
               </text>
             </g>
           );
@@ -70,7 +71,7 @@ export function BoxplotChart({
           <rect
             x={position(data.firstQuartile)}
             y={centerY - 46}
-            width={Math.max(2, position(data.thirdQuartile) - position(data.firstQuartile))}
+            width={position(data.thirdQuartile) - position(data.firstQuartile)}
             height="92"
             className="fill-brand-100 stroke-brand-600 stroke-2"
           />
@@ -83,7 +84,7 @@ export function BoxplotChart({
             content={
               <span className="grid gap-0.5">
                 <span className="font-semibold">{label}</span>
-                <span className="text-sm font-bold text-brand-200">{value.toLocaleString("pt-BR")}</span>
+                <span className="text-sm font-bold text-brand-200">{formatarValorDoEixo(value)}</span>
               </span>
             }
           >
@@ -92,11 +93,11 @@ export function BoxplotChart({
                 {...triggerProps}
                 data-chart-item
                 data-selected={selectedIndex === index}
-                aria-label={`${label}: ${value.toLocaleString("pt-BR")}`}
+                aria-label={`${label}: ${formatarValorDoEixo(value)}`}
                 x={position(value) - 12}
-                y={centerY - 62}
+                y={centerY - 62 + index * 25}
                 width="24"
-                height="124"
+                height="25"
                 className="fill-transparent outline-none focus-visible:stroke-brand-500 focus-visible:stroke-1"
                 onMouseEnter={(event) => {
                   setHoveredIndex(index);

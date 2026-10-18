@@ -33,82 +33,7 @@ import type {
   TipoVariavel,
 } from "../components/ui/question-grid";
 import { cn } from "../lib/cn";
-import { mockRequestDelay } from "../services/api";
-
-const perguntasMockadas: PerguntaRow[] = [
-  {
-    id: "q01",
-    codigo: "Q01",
-    enunciado: "Qual é a sua idade?",
-    papel: "Pergunta",
-    tipo: "Quantitativa",
-    categoria: "Discreta",
-  },
-  {
-    id: "q02",
-    codigo: "Q02",
-    enunciado: "Quantos dispositivos eletrônicos você possui?",
-    papel: "Pergunta",
-    tipo: "Quantitativa",
-    categoria: "Discreta",
-  },
-  {
-    id: "q03",
-    codigo: "Q03",
-    enunciado: "Quantas horas por dia você usa a internet?",
-    papel: "Pergunta",
-    tipo: "Quantitativa",
-    categoria: "Contínua",
-  },
-  {
-    id: "q04",
-    codigo: "Q04",
-    enunciado: "Quantas horas por dia você passa em redes sociais?",
-    papel: "Pergunta",
-    tipo: "Quantitativa",
-    categoria: "Contínua",
-  },
-  {
-    id: "q11",
-    codigo: "Q11",
-    enunciado: "Qual é o seu gênero?",
-    papel: "Pergunta",
-    tipo: "Qualitativa",
-    categoria: "Nominal",
-  },
-  {
-    id: "q12",
-    codigo: "Q12",
-    enunciado: "Qual é a sua escolaridade?",
-    papel: "Pergunta",
-    tipo: "Qualitativa",
-    categoria: "Ordinal",
-  },
-  {
-    id: "q14",
-    codigo: "Q14",
-    enunciado: "Qual ferramenta de IA você mais utiliza?",
-    papel: "Pergunta",
-    tipo: "Qualitativa",
-    categoria: "Nominal",
-  },
-  {
-    id: "q15",
-    codigo: "Q15",
-    enunciado: "Com que frequência você utiliza ferramentas de IA?",
-    papel: "Pergunta",
-    tipo: "Qualitativa",
-    categoria: "Ordinal",
-  },
-  {
-    id: "q24",
-    codigo: "Q24",
-    enunciado: "Qual sistema operacional de celular você utiliza?",
-    papel: "Pergunta",
-    tipo: "Qualitativa",
-    categoria: "Nominal",
-  },
-];
+import { colunaParaLinha, confirmarRevisao, enviarArquivo, obterRevisao, type RevisaoImportacao } from "../services/importacao";
 
 const categoriasPorTipo: Record<TipoVariavel, CategoriaVariavel[]> = {
   Quantitativa: ["Discreta", "Contínua"],
@@ -135,7 +60,8 @@ function formatarTamanhoArquivo(bytes: number) {
 
 export function ImportPage() {
   const [etapa, setEtapa] = useState(1);
-  const [perguntas, setPerguntas] = useState<PerguntaRow[]>(perguntasMockadas);
+  const [perguntas, setPerguntas] = useState<PerguntaRow[]>([]);
+  const [importacao, setImportacao] = useState<RevisaoImportacao | null>(null);
   const [busca, setBusca] = useState("");
   const [buscaComDelay, setBuscaComDelay] = useState("");
   const [filtroTipo, setFiltroTipo] = useState<TipoVariavel | "todos">("todos");
@@ -170,7 +96,7 @@ export function ImportPage() {
       const correspondeAoTexto =
         termo.length === 0 ||
         normalizarBusca(
-          [item.codigo, item.enunciado, item.tipo, item.categoria]
+          [item.codigo, item.papel, item.enunciado, item.tipo, item.categoria]
             .filter(Boolean)
             .join(" "),
         ).includes(termo);
@@ -184,6 +110,13 @@ export function ImportPage() {
   }, [buscaComDelay, filtroCategoria, filtroTipo, perguntas]);
 
   function atualizarPergunta(perguntaAtualizada: PerguntaRow) {
+    const atual = perguntas.find((item) => item.id === perguntaAtualizada.id);
+    const selecionadas = perguntas.filter((item) => item.papel === "Pergunta").length;
+    if (perguntaAtualizada.papel === "Pergunta" && atual?.papel !== "Pergunta" && selecionadas >= 30) {
+      setErroArquivo("Selecione no máximo 30 perguntas.");
+      return;
+    }
+    setErroArquivo(null);
     setPerguntas((items) =>
       items.map((item) =>
         item.id === perguntaAtualizada.id ? perguntaAtualizada : item,
@@ -250,21 +183,35 @@ export function ImportPage() {
   }
 
   async function avancarEtapa() {
-    if (etapa === 1) {
-      setProcessandoImportacao(true);
-      await mockRequestDelay();
+    if (etapa === 3 && importacao) {
+      navigate("/home/" + importacao.id);
+      return;
+    }
+    setErroArquivo(null);
+    setProcessandoImportacao(true);
+    try {
+      if (etapa === 1) {
+        if (!arquivoSelecionado) throw new Error("Selecione um arquivo CSV ou Excel.");
+        const revisao = await enviarArquivo(arquivoSelecionado);
+        setImportacao(revisao);
+        setPerguntas(revisao.colunas.map(colunaParaLinha));
+        setEtapa(2);
+      } else if (importacao) {
+        const confirmada = await confirmarRevisao(importacao, perguntas);
+        setImportacao(confirmada);
+        setEtapa(3);
+      }
+    } catch (error) {
+      setErroArquivo(error instanceof Error ? error.message : "Não foi possível importar o arquivo.");
+      if (etapa === 2 && importacao) {
+        const revisao = await obterRevisao(importacao.id).catch(() => null);
+        if (revisao) setImportacao({ ...importacao, problemas: revisao.problemas });
+      }
+    } finally {
       setProcessandoImportacao(false);
-      setEtapa(2);
-      return;
     }
-
-    if (etapa === 2) {
-      setEtapa(3);
-      return;
-    }
-
-    navigate("/home/pesquisa-tecnologia-2026");
   }
+
 
   return (
     <main
@@ -297,24 +244,40 @@ export function ImportPage() {
                   Configure suas perguntas
                 </Text>
                 <Text variant="label" tone="muted" className="max-w-2xl">
-                  Analise o tipo e a categoria das variáveis. Clique nas tags
-                  para editar as informações quando necessário.
+                  Defina o papel de cada coluna e revise o tipo e a categoria das
+                  perguntas. Selecione de 1 a 30 perguntas para analisar.
                 </Text>
               </div>
 
-              <QuestionFilters
-                className="mb-3 ml-auto w-full sm:max-w-md"
-                query={busca}
-                onQueryChange={setBusca}
-                typeValue={filtroTipo}
-                onTypeChange={alterarFiltroTipo}
-                categoryValue={filtroCategoria}
-                onCategoryChange={setFiltroCategoria}
-                categories={categoriasDisponiveis}
-              />
+              <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                {importacao?.formato === "csv" && (
+                  <label className="flex shrink-0 items-center gap-2 text-sm font-medium text-ink">
+                    Separador decimal
+                    <select
+                      className="h-11 rounded-xl border border-line bg-paper px-3 text-sm text-ink outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                      value={importacao.separadorDecimal ?? "."}
+                      onChange={(event) => setImportacao({ ...importacao, separadorDecimal: event.target.value as "," | "." })}
+                    >
+                      <option value=".">Ponto (1.5)</option>
+                      <option value=",">Vírgula (1,5)</option>
+                    </select>
+                  </label>
+                )}
+                <QuestionFilters
+                  className="w-full min-w-0 sm:ml-auto sm:max-w-md"
+                  query={busca}
+                  onQueryChange={setBusca}
+                  placeholder="Buscar por código, papel, pergunta, tipo ou categoria..."
+                  typeValue={filtroTipo}
+                  onTypeChange={alterarFiltroTipo}
+                  categoryValue={filtroCategoria}
+                  onCategoryChange={setFiltroCategoria}
+                  categories={categoriasDisponiveis}
+                />
+              </div>
 
               <Text variant="caption" tone="muted" className="mb-2">
-                {perguntasFiltradas.length} de {perguntas.length} perguntas
+                {perguntas.filter((item) => item.papel === "Pergunta").length} perguntas selecionadas · {importacao?.totalRespostas} respostas
               </Text>
               <QuestionsGrid
                 rows={perguntasFiltradas}
@@ -326,6 +289,14 @@ export function ImportPage() {
                 hoverHighlight
                 ariaLabel="Perguntas importadas"
               />
+
+              {Boolean(importacao?.problemas.length) && (
+                <div role="alert" className="mt-4 text-sm text-negative">
+                  {importacao?.problemas.slice(0, 10).map((problema, indice) => (
+                    <p key={indice}>Registro {problema.linha}: {problema.valorBruto} — {problema.mensagem}</p>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -479,11 +450,15 @@ export function ImportPage() {
                 Configuração concluída
               </Text>
               <Text tone="muted" className="mt-2">
-                As perguntas estão prontas para a próxima etapa da importação.
+                As {importacao?.totalRespostas} respostas foram tratadas e armazenadas com sucesso.
+              </Text>
+              <Text variant="caption" tone="muted" className="mt-2">
+                O dashboard apresenta as análises das perguntas confirmadas.
               </Text>
             </Card>
           )}
 
+          {erroArquivo && etapa !== 1 && <Text role="alert" tone="negative">{erroArquivo}</Text>}
           <div
             className={cn(
               "flex items-center justify-between gap-3 pt-6",
@@ -494,6 +469,7 @@ export function ImportPage() {
           >
             <Button
               variant="ghost"
+              disabled={processandoImportacao || etapa === 3}
               onClick={() => {
                 if (etapa > 1) setEtapa((current) => current - 1);
                 else navigate("/");
@@ -502,7 +478,7 @@ export function ImportPage() {
               <LucideArrowLeft className="size-4" />
               Voltar
             </Button>
-            <Button disabled={processandoImportacao} onClick={avancarEtapa}>
+            <Button disabled={processandoImportacao || (etapa === 1 && !arquivoSelecionado)} onClick={avancarEtapa}>
               {etapa === 3 ? "Finalizar" : "Continuar"}
               {etapa < 3 ? (
                 <LucideArrowRight className="size-4" />

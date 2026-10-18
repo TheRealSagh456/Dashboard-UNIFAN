@@ -186,8 +186,8 @@ realizada e suas consequências.
 - **Consequências:** o atributo `data-theme` do elemento raiz controla os tokens;
   o botão de tema fica fixo no canto superior direito; a cena de ondas possui
   materiais próprios para cada tema; a preferência manual prevalece sobre
-  mudanças posteriores do sistema; e o atraso demonstrativo de 2 segundos fica
-  centralizado em `Frontend/src/services/api.ts` para remoção futura.
+  mudanças posteriores do sistema. O atraso demonstrativo foi removido na
+  DEC-021; os estados assíncronos seguem o tempo real da API.
 
 ## DEC-013 - Substituição da pesquisa atual na V5
 
@@ -261,7 +261,8 @@ realizada e suas consequências.
 - **Motivo:** adequar a representação estatística sem redesenhar a interface,
   duplicar gráficos ou introduzir tipos fora do escopo solicitado.
 - **Consequências:** definição de classes e cálculo de densidades permanecem no
-  backend; o frontend demonstrativo recebe limites e densidades estáticos.
+  backend; a integração da DEC-021 passou a fornecer os limites e densidades
+  reais à interface.
   Dashboard, catálogo e relatório PDF reutilizam os mesmos componentes. Não
   foram adicionados polígonos, dispersão nem novas opções de visualização.
   As últimas classes abertas de Q04, Q07 e Q09 receberam limites finitos apenas
@@ -282,12 +283,82 @@ realizada e suas consequências.
   A regressão deve cobrir larguras acima do limite de 1280 px do conteúdo, menu
   expandido/recolhido e ambos os temas, além de conferir os demais formatos.
 
+## DEC-019 - Importação persistente de CSV e Excel
+
+- **Situação:** aceita
+- **Decisão:** implementar upload e revisão com Fastify e @fastify/multipart,
+  leitores csv-parse/SheetJS e armazenamento no schema SQLite existente. Manter
+  a separação entre routes, controllers, services e módulos de importacao.
+- **Motivo:** permitir importar o formulário definitivo sem depender do tema,
+  das posições das perguntas ou das inconsistências da amostra de desenvolvimento,
+  com código direto e sem recursividade.
+- **Consequências:** a página de importação envia o arquivo, revisa colunas e
+  confirma tipos e ordens. O upload persiste dados brutos em revisão; a confirmação
+  grava os valores tratados. Ausências ficam null e zero é válido. Datas CSV
+  permanecem textuais; datas Excel usam calendário ISO sem atribuição de fuso.
+  Os limites iniciais são 10 MB e 10.000 respostas; a seleção é de 1 a 30 perguntas.
+  A pesquisa atual é a última confirmada por atualizado_em, com desempate pelo ID;
+  seu nome deriva do arquivo. Exclusão e exportação usam SQLite e preservam outras
+  importações. Excluir a atual pode revelar uma anterior. Fórmulas e células de
+  erro Excel são recusadas. Os cálculos e a integração da Home foram concluídos
+  na DEC-021. Esta implementação avança os arquivos-base da DEC-016.
+
+## DEC-020 - Configuração das colunas na grade de importação
+
+- **Situação:** aceita
+- **Decisão:** concentrar a escolha entre pergunta, metadado e não analisar na
+  QuestionsGrid, em uma coluna Papel após Código. Manter a ordem das categorias
+  ordinais no detalhe da linha e posicionar o separador decimal à esquerda da
+  busca e dos filtros.
+- **Motivo:** evitar uma segunda lista de configuração para as mesmas colunas.
+- **Consequências:** o estado das linhas fornece os papéis e categorias enviados
+  à API. Metadados e colunas não analisadas não permitem editar tipo ou categoria.
+  A seleção de uma 31ª pergunta continua bloqueada e os controles se empilham
+  em telas menores. A grade mantém paginação, ordenação e navegação por teclado.
+
+## DEC-021 - Análises da pesquisa importada no backend
+
+- **Situação:** aceita no escopo confirmado
+- **Decisão:** calcular todas as estatísticas no backend, em funções puras de
+  estatistica/calculos.ts, e consultar a pesquisa confirmada no SQLite por
+  services/dashboard.service.ts. GET /api/pesquisas/:pesquisaId/dashboard
+  alimenta visão geral, catálogo, análise individual e relatório. /home resolve
+  a pesquisa atual. Nenhuma falha da API é substituída por dados demonstrativos.
+- **Convenções:** quartis e mediana numéricos usam interpolação linear na posição
+  (n - 1) × p. Histogramas usam ceil(1 + log2(n)) classes de mesma amplitude, sem
+  arredondar os limites de cálculo, incluindo a fronteira inferior e excluindo
+  a superior, salvo o máximo na última classe. Amostra constante usa uma classe
+  de amplitude 1. Moda inclui empates; todos distintos com n > 1 são amodais.
+  Mediana ordinal par informa as duas categorias centrais quando diferentes.
+  Boxplot usa mínimo e máximo observados, sem exclusão de outliers.
+- **Consequências:** ausências ficam fora das medidas e dos denominadores por
+  pergunta, mas aparecem nos totais; zero permanece válido. Sem valores válidos,
+  não há medidas nem boxplot. Frequências acumuladas, relativas, percentuais,
+  densidades e resumos são calculados no backend. O frontend somente formata e
+  calcula a geometria dos gráficos, sem atraso artificial. Exportações de dados
+  enviam o ID da pesquisa exibida. As regras e os contratos estão em
+  business-rules.md e api.md. Não houve mudança de schema nem novas dependências.
+
+## DEC-022 - Adaptação dos gráficos às distribuições importadas
+
+- **Situação:** aceita no escopo de revisão de todos os gráficos
+- **Decisão:** corrigir a escala de densidades, a faixa dos boxplots e a
+  apresentação de séries extensas, preservando frequências e medidas da API.
+- **Motivo:** o cenário demonstrativo não expunha densidades baixas, muitos valores
+  distintos, intervalos longos nem números negativos ou constantes.
+- **Consequências:** contagens usam ticks inteiros; histogramas aceitam escalas
+  menores que 1; boxplots usam mínimo e máximo. A API fornece `valor` nas classes
+  quantitativas, com ponto médio calculado no backend nas contínuas, para desenhar
+  pontos em coordenadas numéricas. O frontend somente calcula geometria.
+  Rótulos são quebrados ou espaçados sem remover marcas; o tempo de animação não
+  cresce com a série. Pizza e rosca tratam bases vazias e cores adicionais.
+  Há testes de regressão em Frontend/tests/charts.test.mjs, executados por npm test.
+  Não houve mudança de schema nem dependências novas.
+
 ## Decisões pendentes
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |
 | :------------------ | :------------------------------------------------------------------------------------------- | :----------------------------------- |
-| Quartis             | Confirmar a convenção matemática esperada.                                                   | Cálculos e testes estatísticos       |
 | Rótulo das classes  | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`.        | Interface e documentação estatística |
 | Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição               |
-| Classes de Sturges  | Definir o arredondamento dos limites das classes.                                            | Histograma, ogivas e tabelas         |
-| Limites de arquivo  | Definir tamanho máximo e quantidade prática de respostas.                                    | Validação e desempenho               |
+| Limites de arquivo  | Reavaliar os limites iniciais de 10 MB e 10.000 respostas quando houver uso real.               | Validação e desempenho               |

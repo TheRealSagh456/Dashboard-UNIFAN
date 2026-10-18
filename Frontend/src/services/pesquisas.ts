@@ -1,4 +1,4 @@
-import { apiRequest, mockRequestDelay } from "./api";
+import { apiRequest } from "./api";
 
 type LimparPesquisaAtualResponse = {
   cleared: boolean;
@@ -18,12 +18,9 @@ export async function obterPesquisaAtual() {
 }
 
 export async function limparPesquisaAtual() {
-  const [response] = await Promise.all([
-    apiRequest<LimparPesquisaAtualResponse>("/api/pesquisas/atual", {
-      method: "DELETE",
-    }),
-    mockRequestDelay(),
-  ]);
+  const response = await apiRequest<LimparPesquisaAtualResponse>("/api/pesquisas/atual", {
+    method: "DELETE",
+  });
 
   return response.data;
 }

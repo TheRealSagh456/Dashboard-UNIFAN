@@ -19,7 +19,7 @@ atualizados sempre que uma decisão relevante for tomada.
 | [import-format.md](./import-format.md)   | Formatos de arquivo e regras de importação.                                  | Em elaboração |
 | [design-system.md](./design-system.md)   | Tokens visuais, componentes reutilizáveis e catálogo do frontend.            | Ativo         |
 | [api.md](./api.md)                       | Contratos entre frontend e backend.                                          | Em elaboração |
-| [backend-guide.md](./backend-guide.md)   | Base SQLite, schema e roteiro gradual para os membros construírem o backend. | Ativo         |
+| [backend-guide.md](./backend-guide.md)   | Importação, SQLite, cálculos, integração do dashboard e validações.       | Ativo         |
 | `testing.md`                             | Estratégia e casos de teste.                                                 | Pendente      |
 | `team-guide.md`                          | Guia de colaboração para os integrantes.                                     | Pendente      |
 | `STATUS.md`                              | Estado atual das entregas e próximos passos.                                 | Pendente      |

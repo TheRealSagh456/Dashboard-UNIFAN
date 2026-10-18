@@ -1,11 +1,27 @@
-// Etapa 5 de Docs/backend-guide.md. Implementação a cargo dos membros.
-//
-// TODO: receber o arquivo e os parâmetros conforme o contrato de Docs/api.md.
-// TODO: aguardar o service de importação e formar a resposta HTTP.
-// TODO: usar { data: ... } no sucesso e { error: { message, code } } no erro.
-// TODO: distinguir entrada inválida de falha interna e registrar esta no log.
-//
-// Consultas SQL, leitura de planilhas e normalização pertencem ao service
-// e aos módulos de importacao/, não ao controller.
+import type { FastifyReply, FastifyRequest } from "fastify";
+import { confirmarImportacao, importarArquivo, obterRevisao, salvarRevisao } from "../services/importacao.service.ts";
+import type { ConfiguracaoColuna } from "../types/importacao.ts";
+import { ErroAplicacao } from "../utils/erro-aplicacao.ts";
 
-export {};
+type Parametros = { id: string };
+export type CorpoRevisao = { colunas: ConfiguracaoColuna[]; separadorDecimal?: "," | "." };
+
+export async function importarController(request: FastifyRequest<{ Querystring: { delimitador?: string } }>, reply: FastifyReply) {
+  const arquivo = await request.file();
+  if (!arquivo) throw new ErroAplicacao("Selecione um arquivo.", "IMPORT_FILE_REQUIRED");
+  const buffer = await arquivo.toBuffer();
+  const data = await importarArquivo(buffer, arquivo.filename, request.query.delimitador);
+  return reply.status(201).send({ data });
+}
+
+export async function revisaoController(request: FastifyRequest<{ Params: Parametros }>, reply: FastifyReply) {
+  return reply.send({ data: await obterRevisao(request.params.id) });
+}
+
+export async function salvarRevisaoController(request: FastifyRequest<{ Params: Parametros; Body: CorpoRevisao }>, reply: FastifyReply) {
+  return reply.send({ data: await salvarRevisao(request.params.id, request.body) });
+}
+
+export async function confirmarController(request: FastifyRequest<{ Params: Parametros }>, reply: FastifyReply) {
+  return reply.send({ data: await confirmarImportacao(request.params.id) });
+}

@@ -35,14 +35,12 @@ por clique são brancas nos dois temas.
 
 ## Carregamentos da V5
 
-O atraso demonstrativo é `2000 ms` e fica em
-`Frontend/src/services/api.ts`. Ele permanece intencionalmente no projeto para
-inspeção visual.
+As operações usam o tempo real da API, sem atraso demonstrativo.
 
 - a importação bloqueia e escurece a tela, apresenta spinner e alterna as
   mensagens a cada 3 segundos;
 - visão geral, catálogo e análise individual usam skeletons que preservam a
-  estrutura aproximada do conteúdo final durante trocas de rota;
+  estrutura aproximada do conteúdo enquanto a pesquisa é carregada;
 - o skeleton respeita `prefers-reduced-motion`, removendo o brilho animado;
 - a limpeza da pesquisa usa o estado de carregamento do botão dentro do modal e
   mantém qualquer erro da API visível para nova tentativa.
@@ -93,14 +91,32 @@ conferidos; lint e build passaram sem novas dependências.
 
 O dashboard completo é montado fora da área visível por
 `Frontend/src/feats/home/report-pages.tsx`: uma capa usa o nome original recebido
-por `GET /api/pesquisas/atual`, seguida por uma página A4 fixa para cada pergunta.
+pelo endpoint de dashboard da pesquisa exibida, seguida por uma página A4 fixa
+para cada pergunta.
 O modal oferece uma predefinição global e seletores por pergunta limitados aos
 gráficos compatíveis. As páginas são capturadas sequencialmente, com progresso
 visível, e reunidas no mesmo PDF. Os formatos de dados chamam
 `GET /api/exportacoes/dados`; a regra de seleção das
-colunas e a geração do arquivo permanecem no backend. O atraso mockado de 2
-segundos também é aplicado à chamada de dados para manter o estado de loading
-visível durante o desenvolvimento.
+colunas e a geração do arquivo permanecem no backend. A chamada envia pesquisaId
+para preservar o mesmo escopo da tela, sem atraso artificial.
+
+## Gráficos com dados importados
+
+- A escala aceita densidades menores que 1 e mantém ticks inteiros em contagens.
+  Um intervalo adicional deixa espaço após a maior frequência: máximo 10 com
+  intervalo 2 estende o eixo até 12, em colunas, pontos, barras e histogramas.
+- O boxplot usa a faixa dos cinco valores, sem forçar origem zero. Constantes
+  ficam centralizadas; regiões de foco sobrepostas são separadas verticalmente.
+- Rótulos longos quebram em linhas; séries extensas espaçam apenas os rótulos,
+  preservando todas as marcas e seus tooltips.
+- Pontos quantitativos usam a coordenada numérica da API; os ordinais continuam
+  igualmente espaçados. A animação completa fica limitada a cerca de 1,1 segundo.
+- Pizza e rosca montam os setores em uma passagem, fecham 360 graus, omitem
+  frequências zero e tratam bases vazias. Cores adicionais distinguem mais de
+  cinco categorias.
+- `npm test` no Frontend verifica escalas e a geometria renderizada dos componentes.
+  A revisão foi conferida também com imagens SVG rasterizadas dos dois CSVs de
+  teste, nos temas claro e escuro; isso não substitui um ensaio interativo no navegador.
 
 ## Componentes disponíveis
 
@@ -169,23 +185,37 @@ fundo ou contorno. O conjunto tem baixa opacidade em repouso, enquanto os
 chevrons recebem destaque no hover e a opacidade também aumenta com hover ou
 foco.
 
-A primeira grade está na etapa `Configurar` da importação. Enquanto a API de
-importação não estiver integrada, ela recebe linhas mockadas. As colunas `Tipo` e
-`Categoria` podem ser editadas. Ao trocar o tipo, uma categoria incompatível é
-substituída pela primeira categoria válida do novo tipo.
+A primeira grade está na etapa `Configurar` da importação e recebe as colunas
+retornadas pelo backend após o upload. A ordem das colunas é `Código`, `Papel`,
+`Pergunta`, `Tipo` e `Categoria`. `Papel` permite selecionar `Pergunta`,
+`Metadado` ou `Não analisar` usando a mesma edição por tags. Tipo e categoria
+ficam desabilitados quando o papel não é pergunta. Ao trocar o tipo, uma
+categoria incompatível é substituída pela primeira categoria válida do novo tipo.
 
 A busca da etapa usa um atraso de 300 ms, ignora diferenças de caixa e acentos e
-consulta código, pergunta, tipo e categoria. O botão de filtros permite combinar
+consulta código, papel, pergunta, tipo e categoria. O botão de filtros permite combinar
 tipo e categoria com a busca textual.
 
 ## Entrada de dados na importação
 
 A primeira etapa aceita a seleção local de arquivos `.csv`, `.xls` e `.xlsx` por
-clique ou arrastar e soltar. O arquivo escolhido permanece somente no estado do
-frontend até a integração da API. CSV usa o token roxo e arquivos Excel usam o
+clique ou arrastar e soltar. Ao continuar, FormData envia o arquivo à API e a
+interface aguarda a prévia persistida. CSV usa o token roxo e arquivos Excel usam o
 tom semântico positivo. Durante o arraste de um arquivo sobre a página, o restante
 da interface escurece e a área de importação recebe brilho e destaque animados,
 respeitando a preferência de redução de movimento.
+
+Na configuração, a seleção do papel acontece diretamente na grade. Cada linha
+permite consultar exemplos na célula da pergunta; nas ordinais, o mesmo detalhe
+permite editar as categorias, uma por linha, da menor para a maior. Não há um
+painel separado de revisão. O seletor de separador decimal do CSV fica à esquerda
+da busca, alinhado com o campo e o botão de filtros. Em telas estreitas, os
+controles se empilham. O estado das linhas é a fonte dos papéis e categorias
+enviados ao backend; marcar uma 31ª pergunta continua bloqueado.
+O botão Continuar salva a configuração e confirma a importação. Só então a
+etapa final informa o armazenamento concluído. Erros permanecem visíveis e
+problemas de conversão exibem o registro e o valor original.
+A importação usa o tempo real da API, sem o atraso demonstrativo de 2 segundos.
 
 O campo do Google Sheets mantém o link em estado controlado e possui um botão
 `Buscar`. O envio do formulário apenas evita a navegação do navegador; a futura
@@ -196,9 +226,15 @@ estiver disponível.
 
 O dashboard usa `/home/:pesquisaId` para a visão geral,
 `/home/:pesquisaId/perguntas` para o catálogo e
-`/home/:pesquisaId/perguntas/:perguntaId` para a análise individual. Enquanto a
-API não estiver integrada, as telas consomem os dados demonstrativos de
-`Frontend/src/feats/home/dashboard-data.ts`.
+`/home/:pesquisaId/perguntas/:perguntaId` para a análise individual. A rota
+/home abre a pesquisa atual. As telas consomem GET /api/pesquisas/:pesquisaId/dashboard;
+dashboard-data.ts contém somente tipos.
+
+Não há dados demonstrativos nas telas da pesquisa. Erros mostram nova tentativa
+e acesso à importação. Perguntas sem respostas válidas mostram uma mensagem no
+lugar do gráfico; frequências vazias não exibem 100%. Medidas, frequências,
+percentuais e metadados dos gráficos vêm do backend; o frontend apenas formata
+os valores e calcula coordenadas de desenho.
 
 A visão geral apresenta os totais de respostas, perguntas e ausências, um
 gráfico de rosca com as quatro categorias de variável e a lista de perguntas com
@@ -228,12 +264,11 @@ As marcas gráficas usam três níveis visuais: base clara, hover intermediário
 seleção forte. O clique fixa tooltip e seleção; outro item transfere a seleção,
 enquanto clique externo ou `Escape` limpa o estado. Uma seleção fixada continua
 visível quando outro item recebe hover ou foco, permitindo dois tooltips
-simultâneos. Barras verticais têm somente os cantos superiores arredondados,
-barras horizontais somente a extremidade de valor, e os eixos são desenhados
-acima das bases.
+simultâneos. Barras horizontais e colunas verticais têm cantos retos, e os eixos
+são desenhados acima das bases.
 
-Histogramas reutilizam `CartesianChart`, mas não herdam os vãos nem o
-arredondamento das colunas categóricas. Os dados incluem `histogram` com
+Histogramas reutilizam `CartesianChart`, sem os vãos das colunas categóricas.
+Todas essas marcas têm cantos retos. Os dados incluem `histogram` com
 `lowerBound`, `upperBound` e `density`; os limites posicionam as barras em uma
 escala horizontal numérica e a densidade recebida determina a altura. As barras
 se encostam nas fronteiras, mesmo com amplitudes diferentes. O eixo vertical é
@@ -279,7 +314,7 @@ O build conserva o aviso anterior de tamanho do pacote da cena decorativa.
 
 Na revisão de adequação visual, lint e build passaram sem dependências novas.
 As verificações no navegador cobrem contiguidade, amplitudes e densidades dos
-quatro histogramas demonstrativos, temas claro/escuro, seleção por clique e
+histogramas, temas claro/escuro, seleção por clique e
 teclado, dois tooltips simultâneos, caixa do boxplot e preservação das outras
 visualizações. A captura de tela atual em PDF foi conferida em uma única página
 A4 com o histograma completo; o relatório completo usa o mesmo componente.

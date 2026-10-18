@@ -1,12 +1,14 @@
 import { useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "react";
 import { useChartInteraction } from "../../hooks/use-chart-interaction";
 import { cn } from "../../lib/cn";
-import { criarEscalaAgradavel } from "../../utils/chart-scale";
+import { criarEscalaAgradavel, criarEscalaIntervalo } from "../../utils/chart-scale";
+import { formatarValorDoEixo, quebrarRotulo } from "../../utils/chart-layout";
 import { Tooltip, type TooltipTriggerProps } from "../ui/tooltip";
 
 export type CartesianChartDatum = {
   label: string;
   value: number;
+  xValue?: number;
   detail?: string;
   histogram?: {
     lowerBound: number;
@@ -97,29 +99,41 @@ export function CartesianChart({
     return <p role="status" className="py-8 text-center text-sm text-muted">Os intervalos do histograma ainda não estão disponíveis.</p>;
   }
 
+  if (!data.length) return <p role="status" className="py-8 text-center text-sm text-muted">Não há dados para exibir.</p>;
+
   const width = 760;
   const height = Math.max(360, horizontal ? data.length * 52 + 125 : 360);
-  const margin = { top: 24, right: 24, bottom: horizontal ? 64 : 92, left: horizontal ? 168 : 72 };
+  const margin = { top: 24, right: 24, bottom: horizontal ? 64 : 92, left: horizontal ? 210 : 80 };
   const chartWidth = width - margin.left - margin.right;
   const chartHeight = height - margin.top - margin.bottom;
   const baseline = margin.top + chartHeight;
-  const scale = criarEscalaAgradavel(Math.max(...data.map((item, index) => histogramData?.[index].histogram.density ?? item.value), 1));
+  const maiorValor = data.reduce((maior, item, index) => Math.max(maior, histogramData?.[index].histogram.density ?? item.value), 0);
+  const scale = criarEscalaAgradavel(maiorValor, 5, !histogramData);
+  const numerico = variant === "line" && data.every((item) => item.xValue !== undefined);
+  const valoresX = data.map((item) => item.xValue ?? 0);
+  const escalaX = numerico ? criarEscalaIntervalo(Math.min(...valoresX), Math.max(...valoresX)) : null;
+  const posicaoX = (valor: number) => margin.left + ((valor - escalaX!.inicio) / (escalaX!.limite - escalaX!.inicio)) * chartWidth;
   const band = horizontal ? chartHeight / data.length : chartWidth / data.length;
   const gap = histogramData ? 0 : Math.min(18, band * 0.24);
   const lowerBound = histogramData?.[0].histogram.lowerBound ?? 0;
   const upperBound = histogramData?.[histogramData.length - 1].histogram.upperBound ?? 1;
+  const boundaries = histogramData ? [lowerBound, ...histogramData.map((item) => item.histogram.upperBound)] : [];
+  const boundaryLabelStep = Math.max(1, Math.ceil(
+    (boundaries.reduce((maior, valor) => Math.max(maior, formatarValorDoEixo(valor).length), 0) * 6 + 12)
+      / (chartWidth / Math.max(1, boundaries.length - 1)),
+  ));
   const intervalPosition = (value: number) =>
     margin.left + ((value - lowerBound) / (upperBound - lowerBound)) * chartWidth;
   const points = data.map((item, index) => {
     const interval = histogramData?.[index].histogram;
     const left = interval ? intervalPosition(interval.lowerBound) : margin.left + band * index + gap / 2;
-    const right = interval ? intervalPosition(interval.upperBound) : left + Math.max(3, band - gap);
+    const right = interval ? intervalPosition(interval.upperBound) : left + band - gap;
 
     return {
       item,
       left,
       barWidth: right - left,
-      x: horizontal ? margin.left + (item.value / scale.limite) * chartWidth : (left + right) / 2,
+      x: horizontal ? margin.left + (item.value / scale.limite) * chartWidth : numerico ? posicaoX(item.xValue!) : (left + right) / 2,
       y: horizontal ? margin.top + band * index + band / 2 : baseline - ((interval?.density ?? item.value) / scale.limite) * chartHeight,
     };
   });
@@ -168,19 +182,19 @@ export function CartesianChart({
 
   return (
     <div ref={rootRef} className={cn("overflow-x-auto", className)}>
-      <svg viewBox={`0 0 ${width} ${height}`} className="min-w-[42rem]" role="img" aria-label={ariaLabel}>
+      <svg viewBox={`0 0 ${width} ${height}`} className="block w-full min-w-[42rem]" role="img" aria-label={ariaLabel}>
         {scale.marcacoes.map((tick) => {
           const x = margin.left + (tick / scale.limite) * chartWidth;
           const y = baseline - (tick / scale.limite) * chartHeight;
           return horizontal ? (
             <g key={tick}>
               <line x1={x} x2={x} y1={margin.top} y2={baseline} className="stroke-line stroke-1" />
-              <text x={x} y={height - 42} textAnchor="middle" className="fill-muted text-[11px]">{tick.toLocaleString("pt-BR")}</text>
+              <text x={x} y={height - 42} textAnchor="middle" className="fill-muted text-[11px]">{formatarValorDoEixo(tick)}</text>
             </g>
           ) : (
             <g key={tick}>
               <line x1={margin.left} x2={margin.left + chartWidth} y1={y} y2={y} className="stroke-line stroke-1" />
-              <text x={margin.left - 12} y={y + 4} textAnchor="end" className="fill-muted text-[11px]">{tick.toLocaleString("pt-BR")}</text>
+              <text x={margin.left - 12} y={y + 4} textAnchor="end" className="fill-muted text-[11px]">{formatarValorDoEixo(tick)}</text>
             </g>
           );
         })}
@@ -190,9 +204,10 @@ export function CartesianChart({
             const selected = selectedIndex === index;
             const top = point.y - band * 0.3;
             return (
-              <g key={point.item.label}>
+              <g key={index}>
                 <text x={margin.left - 12} y={point.y + 4} textAnchor="end" className="fill-ink text-[11px]">
-                  {point.item.label.length > 22 ? `${point.item.label.slice(0, 20)}…` : point.item.label}
+                  <title>{point.item.label}</title>
+                  {quebrarRotulo(point.item.label, 27, 2).map((linha, i) => <tspan key={i} x={margin.left - 12} dy={i === 0 ? -4 : 14}>{linha}</tspan>)}
                 </text>
                 <Tooltip<SVGPathElement> pinned={selected} content={<TooltipContent item={point.item} />}>
                   {(triggerProps) => (
@@ -201,7 +216,7 @@ export function CartesianChart({
                       {...interactionProps(index, triggerProps)}
                       data-chart-item
                       data-selected={selected}
-                      d={horizontalBarPath(margin.left, top, point.x, band * 0.6, 7)}
+                      d={horizontalBarPath(margin.left, top, point.x, band * 0.6, 0)}
                       className={cn("chart-bar-rise-horizontal", itemClasses(selected))}
                     />
                   )}
@@ -215,7 +230,7 @@ export function CartesianChart({
             {points.map((point, index) => {
               const selected = selectedIndex === index;
               return (
-                <Tooltip<SVGCircleElement> key={point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
+                <Tooltip<SVGCircleElement> key={index} pinned={selected} content={<TooltipContent item={point.item} />}>
                   {(triggerProps) => (
                     <circle
                       {...triggerProps}
@@ -224,12 +239,12 @@ export function CartesianChart({
                       data-selected={selected}
                       cx={point.x}
                       cy={point.y}
-                      r="7"
+                      r={Math.max(2, Math.min(6, chartWidth / data.length / 4))}
                       className={cn(
                         itemClasses(selected),
                         "chart-point-enter stroke-[3]",
                       )}
-                      style={{ animationDelay: `${220 + index * 90}ms` }}
+                      style={{ animationDelay: `${220 + (index / Math.max(1, data.length - 1)) * 600}ms` }}
                     />
                   )}
                 </Tooltip>
@@ -247,8 +262,9 @@ export function CartesianChart({
                     {...interactionProps(index, triggerProps)}
                     data-chart-item
                     data-selected={selected}
-                    d={verticalBarPath(point.left, point.y, point.barWidth, baseline, histogramData ? 0 : 8)}
+                    d={verticalBarPath(point.left, point.y, point.barWidth, baseline, 0)}
                     className={cn("chart-bar-rise-vertical", itemClasses(selected))}
+                    style={{ strokeWidth: Math.min(2, point.barWidth / 4) }}
                   />
                 )}
               </Tooltip>
@@ -265,20 +281,35 @@ export function CartesianChart({
         <line x1={margin.left} x2={margin.left + chartWidth} y1={baseline} y2={baseline} className="pointer-events-none stroke-ink stroke-[1.5]" />
         <line x1={margin.left} x2={margin.left} y1={margin.top} y2={baseline} className="pointer-events-none stroke-ink stroke-[1.5]" />
 
-        {histogramData && [lowerBound, ...histogramData.map((item) => item.histogram.upperBound)].map((boundary) => (
+        {boundaries.map((boundary, index) => (
           <g key={boundary}>
             <line x1={intervalPosition(boundary)} x2={intervalPosition(boundary)} y1={baseline} y2={baseline + 5} className="stroke-ink stroke-1" />
-            <text x={intervalPosition(boundary)} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
-              {boundary.toLocaleString("pt-BR")}
-            </text>
+            {(index === boundaries.length - 1 || (index % boundaryLabelStep === 0 && index < boundaries.length - 1 - boundaryLabelStep / 2)) && <text x={intervalPosition(boundary)} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
+              {formatarValorDoEixo(boundary)}
+            </text>}
           </g>
         ))}
 
-        {!horizontal && !histogramData && points.map((point) => (
-          <text key={point.item.label} x={point.x} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
-            {point.item.label.length > 18 ? `${point.item.label.slice(0, 16)}…` : point.item.label}
-          </text>
+        {escalaX && escalaX.marcacoes.map((tick) => (
+          <g key={tick}>
+            <line x1={posicaoX(tick)} x2={posicaoX(tick)} y1={baseline} y2={baseline + 5} className="stroke-ink" />
+            <text x={posicaoX(tick)} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">{formatarValorDoEixo(tick)}</text>
+          </g>
         ))}
+        {!horizontal && !histogramData && !numerico && points.map((point, index) => {
+          const passo = Math.max(1, Math.ceil(data.length / 10));
+          if (index % passo !== 0 && index !== points.length - 1) return null;
+          // Os dados permanecem completos; apenas os rótulos são espaçados.
+          if (index === points.length - 1 && index % passo !== 0 && index % passo < passo / 2) return null;
+          return (
+            <text key={index} x={point.x} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
+              <title>{point.item.label}</title>
+              {quebrarRotulo(point.item.label, Math.max(7, Math.floor(band * passo / 6)), 3).map((linha, i) => (
+                <tspan key={i} x={point.x} dy={i === 0 ? 0 : 13}>{linha}</tspan>
+              ))}
+            </text>
+          );
+        })}
 
         <text x={margin.left + chartWidth / 2} y={height - 8} textAnchor="middle" className="fill-ink text-xs font-semibold">{xLabel}</text>
         <text x="16" y={margin.top + chartHeight / 2} textAnchor="middle" transform={`rotate(-90 16 ${margin.top + chartHeight / 2})`} className="fill-ink text-xs font-semibold">{yLabel}</text>

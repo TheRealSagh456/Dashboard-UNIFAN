@@ -1,8 +1,9 @@
 # Formato de Importação
 
-Este documento define como o sistema deverá interpretar os arquivos de respostas.
-As regras serão atualizadas depois que o formulário definitivo for criado e uma
-exportação real do Google Forms estiver disponível.
+Este documento define como o sistema interpreta os arquivos de respostas.
+O fluxo de upload, revisão e confirmação já está implementado para CSV, XLSX e
+XLS. Os contratos estão em [api.md](./api.md). As sugestões poderão ser ajustadas
+quando o formulário definitivo estiver disponível, sem fixar suas perguntas.
 
 ## Arquivo de referência
 
@@ -87,8 +88,30 @@ CSV, cada uma com 1.000 respostas sintéticas. Elas cobrem os dois formatos
 principais, metadados, valores ausentes, números decimais, acentos e uma resposta
 personalizada.
 
-O formato `.xls` permanece previsto no escopo, mas ainda não possui um arquivo de
-teste dedicado.
+O formato `.xls` é testado com uma planilha BIFF8 gerada pela suíte, embora não
+possua um fixture dedicado em Mocks/forms.
+
+## Comportamento implementado
+
+- CSV usa UTF-8 com ou sem BOM; vírgula, ponto e vírgula e TAB são detectados
+  pelo parser. Aspas e quebras de linha dentro de campos são preservadas.
+- XLSX/XLS usam a primeira aba não vazia. Fórmulas e células de erro nessa aba
+  são recusadas; a fonte esperada é uma exportação de respostas.
+- O upload salva os valores originais em revisão. A confirmação converte apenas
+  as perguntas de acordo com seus tipos e a ordem escolhida para categorias ordinais.
+- Cabeçalhos com espaços são apresentados com trim, mantendo o original no
+  banco. Cabeçalhos repetidos não colidem porque as colunas usam UUIDs e posições.
+- Colunas sem cabeçalho começam como não selecionadas, sem perder seus valores.
+- Datas CSV, inclusive AM/PM e GMT, permanecem como texto. Datas Excel são
+  serializadas como calendário ISO sem Z. Não se pressupõe um fuso de coleta.
+- Números aceitam sinal e um separador decimal, sem unidades ou milhares.
+  O decimal CSV é sugerido e pode ser corrigido na revisão. Excel usa os números
+  tipados extraídos da fonte.
+- Limites iniciais: 10 MB, 10.000 respostas e 1 a 30 perguntas selecionadas.
+- A ausência é null no valor tratado. O texto bruto é conservado, inclusive
+  espaços; zero continua válido. Linhas inteiramente vazias são ignoradas.
+- O questionário e os metadados são revisáveis. A temática e as inconsistências
+  específicas da amostra de desenvolvimento não geram regras especiais.
 
 ## Validações pendentes com o arquivo real
 

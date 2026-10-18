@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useChartInteraction } from "../../hooks/use-chart-interaction";
 import { cn } from "../../lib/cn";
+import { criarSetores } from "../../utils/chart-layout";
 import { ChartSector } from "./chart-sector";
 import { Tooltip } from "../ui/tooltip";
 import { Text } from "../ui/typography";
@@ -10,6 +11,7 @@ type DonutTone = "brand" | "warm" | "soft" | "positive" | "muted";
 export type DonutChartDatum = {
   label: string;
   value: number;
+  percentual?: number;
   tone?: DonutTone;
 };
 
@@ -44,19 +46,14 @@ export function DonutChart({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const { rootRef, selectedIndex, selectIndex } =
     useChartInteraction<HTMLDivElement>();
-  const total = Math.max(1, data.reduce((sum, item) => sum + item.value, 0));
-  const sectors = data.map((item, index) => {
-    const start = data
-      .slice(0, index)
-      .reduce((angle, sector) => angle + (sector.value / total) * 360, 0);
-    return {
-      ...item,
-      start,
-      end: start + (item.value / total) * 360,
-      tone: item.tone ?? tones[index % tones.length],
-    };
-  });
+  const sectors = criarSetores(data).map((item, index) => ({
+    ...item,
+    tone: item.tone ?? tones[index % tones.length],
+    color: !item.tone && data.length > tones.length ? `hsl(${(index * 137.5 + 210) % 360} 60% 45%)` : undefined,
+  }));
   const stacked = layout === "stacked";
+
+  if (!data.some((item) => item.value > 0)) return <Text tone="muted" className="py-8 text-center">Não há dados para exibir.</Text>;
 
   return (
     <div
@@ -76,6 +73,7 @@ export function DonutChart({
       >
         <svg viewBox="0 0 200 200" className="size-full" role="img" aria-label={ariaLabel}>
           {sectors.map((sector, index) => {
+            if (sector.value <= 0) return null;
             const selected = selectedIndex === index;
             return (
               <Tooltip<SVGPathElement>
@@ -85,7 +83,7 @@ export function DonutChart({
                   <span className="grid min-w-28 gap-0.5">
                     <span className="font-semibold">{sector.label}</span>
                     <span className="text-sm font-bold text-brand-200">
-                      {sector.value.toLocaleString("pt-BR")} · {((sector.value / total) * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%
+                      {sector.value.toLocaleString("pt-BR")}{sector.percentual !== undefined && ` · ${sector.percentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}%`}
                     </span>
                   </span>
                 }
@@ -93,6 +91,7 @@ export function DonutChart({
                 {(triggerProps) => (
                   <ChartSector
                     {...triggerProps}
+                    style={sector.color ? { fill: sector.color } : undefined}
                     data-chart-item
                     data-selected={selected}
                     startAngle={sector.start}
@@ -158,7 +157,7 @@ export function DonutChart({
             )}
           >
             <span className="flex min-w-0 items-center gap-2">
-              <span className={cn("size-2.5 shrink-0 rounded-full", colors[sector.tone])} />
+              <span className={cn("size-2.5 shrink-0 rounded-full", colors[sector.tone])} style={sector.color ? { backgroundColor: sector.color } : undefined} />
               <Text as="span" variant="caption" className={stacked ? undefined : "truncate"}>{sector.label}</Text>
             </span>
             <Text as="strong" variant="caption" className="tabular-nums">{sector.value}</Text>

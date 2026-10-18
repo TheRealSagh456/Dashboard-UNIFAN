@@ -1,10 +1,15 @@
-// Etapa 6 de Docs/backend-guide.md. Implementação a cargo dos membros.
-//
-// TODO: receber e validar os identificadores previstos em Docs/api.md.
-// TODO: aguardar o service de perguntas e formar a resposta HTTP.
-// TODO: definir respostas para pesquisa ou pergunta não encontrada.
-// TODO: seguir os envelopes padrão e registrar falhas internas no log.
-//
-// Cálculos e consultas pertencem ao service, não ao controller.
+import type { FastifyRequest, FastifyReply } from "fastify";
+import { listarPerguntas, obterPergunta } from "../services/perguntas.service.ts";
+import { obterDashboard } from "../services/dashboard.service.ts";
 
-export {};
+export async function dashboardController(request: FastifyRequest<{ Params: { pesquisaId: string } }>, reply: FastifyReply) {
+  return reply.send({ data: await obterDashboard(request.params.pesquisaId) });
+}
+
+export async function listarPerguntasController(request: FastifyRequest<{ Params: { pesquisaId: string } }>, reply: FastifyReply) {
+  return reply.send({ data: await listarPerguntas(request.params.pesquisaId) });
+}
+
+export async function obterPerguntaController(request: FastifyRequest<{ Params: { pesquisaId: string; perguntaId: string }; Querystring: { pagina?: number } }>, reply: FastifyReply) {
+  return reply.send({ data: await obterPergunta(request.params.pesquisaId, request.params.perguntaId, request.query.pagina) });
+}

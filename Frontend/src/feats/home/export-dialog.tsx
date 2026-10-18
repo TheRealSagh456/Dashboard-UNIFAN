@@ -21,6 +21,7 @@ import { ReportCoverPage, ReportQuestionPage } from "./report-pages";
 import { formatarTituloDoArquivo } from "./report-utils";
 
 type ExportDialogProps = {
+  pesquisaId: string;
   questions: PerguntaDashboard[];
   currentQuestionId?: string;
   currentTarget: RefObject<HTMLElement | null>;
@@ -43,12 +44,6 @@ function isVisualFormat(format: ExportFormat): format is "jpeg" | "pdf" {
   return format === "jpeg" || format === "pdf";
 }
 
-function recommendedChart(question: PerguntaDashboard): TipoGrafico {
-  if (question.categoria === "Nominal") return "Barras";
-  if (question.categoria === "Contínua") return "Histograma";
-  return "Colunas";
-}
-
 function chartForPreset(question: PerguntaDashboard, preset: GraphPreset) {
   const preferred: Partial<Record<GraphPreset, TipoGrafico>> = {
     points: "Pontos",
@@ -57,13 +52,13 @@ function chartForPreset(question: PerguntaDashboard, preset: GraphPreset) {
   };
 
   if (preset === "recommended" || preset === "distribution") {
-    return recommendedChart(question);
+    return question.graficoRecomendado;
   }
 
   const chosen = preferred[preset];
   return chosen && question.graficos.includes(chosen)
     ? chosen
-    : recommendedChart(question);
+    : question.graficoRecomendado;
 }
 
 function selectionsForPreset(
@@ -79,6 +74,7 @@ function selectionsForPreset(
 }
 
 export function ExportDialog({
+  pesquisaId,
   questions,
   currentQuestionId,
   currentTarget,
@@ -183,6 +179,7 @@ export function ExportDialog({
         await exportCurrentVisual({ format, currentTarget });
       } else {
         await exportData({
+          pesquisaId,
           format,
           scope: effectiveDataScope,
           questionId: needsQuestion ? questionId : undefined,

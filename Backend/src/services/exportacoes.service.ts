@@ -1,191 +1,60 @@
-import { readFile } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
-import { parse } from "csv-parse/sync";
-import * as XLSX from "xlsx";
-
-// TODO(membros): na etapa 7 de Docs/backend-guide.md, substituir a fonte mock
-// pelos dados da importação confirmada. Preservar os contratos de exportação.
+import { obterBanco } from "../database/conexao.ts";
+import { XLSX } from "../importacao/leitores/excel.ts";
+import { buscarImportacao } from "./importacao.service.ts";
+import { buscarPesquisaAtual } from "./pesquisas.service.ts";
+import { ErroAplicacao } from "../utils/erro-aplicacao.ts";
+import type { ColunaBanco } from "../types/importacao.ts";
 
 export type FormatoExportacao = "xlsx" | "csv";
 export type EscopoExportacao = "all" | "question";
+export class ErroExportacao extends ErroAplicacao {}
 
-type OpcoesExportacao = {
-  format?: string;
-  scope?: string;
-  questionId?: string;
-};
+type OpcoesExportacao = { format?: string; scope?: string; questionId?: string; pesquisaId?: string };
 
-type ResultadoExportacao = {
-  conteudo: Buffer;
-  nomeArquivo: string;
-  mimeType: string;
-};
-
-export class ErroExportacao extends Error {
-  readonly code: string;
-  readonly statusCode: number;
-
-  constructor(message: string, code: string, statusCode = 400) {
-    super(message);
-    this.code = code;
-    this.statusCode = statusCode;
-  }
-}
-
-const arquivoXlsx = fileURLToPath(
-  new URL(
-    "../../../Mocks/forms/pesquisa-tecnologia.mock.xlsx",
-    import.meta.url,
-  ),
-);
-const arquivoCsv = fileURLToPath(
-  new URL("../../../Mocks/forms/pesquisa-tecnologia.mock.csv", import.meta.url),
-);
-
-function validarOpcoes({ format, scope, questionId }: OpcoesExportacao) {
+export async function gerarExportacaoDados({ format, scope, questionId, pesquisaId }: OpcoesExportacao) {
   if (format !== "xlsx" && format !== "csv") {
-    throw new ErroExportacao(
-      "Escolha um formato de exportação válido.",
-      "EXPORT_FORMAT_INVALID",
-    );
+    throw new ErroExportacao("Escolha XLSX ou CSV.", "EXPORT_FORMAT_INVALID");
   }
-
   if (scope !== "all" && scope !== "question") {
-    throw new ErroExportacao(
-      "Escolha um conteúdo válido para a exportação.",
-      "EXPORT_SCOPE_INVALID",
-    );
+    throw new ErroExportacao("Escolha um conteúdo válido.", "EXPORT_SCOPE_INVALID");
   }
-
   if (format === "csv" && scope !== "question") {
-    throw new ErroExportacao(
-      "A exportação CSV está disponível apenas para uma pergunta específica.",
-      "EXPORT_SCOPE_UNAVAILABLE",
-    );
+    throw new ErroExportacao("CSV está disponível apenas para uma pergunta.", "EXPORT_SCOPE_UNAVAILABLE");
   }
-
-  let indicePergunta: number | undefined;
-  if (scope === "question") {
-    const match = /^q(\d{2})$/i.exec(questionId ?? "");
-    const numeroPergunta = match ? Number(match[1]) : Number.NaN;
-    if (
-      !Number.isInteger(numeroPergunta) ||
-      numeroPergunta < 1 ||
-      numeroPergunta > 25
-    ) {
-      throw new ErroExportacao(
-        "Selecione uma pergunta válida para exportar.",
-        "EXPORT_QUESTION_INVALID",
-      );
-    }
-    indicePergunta = numeroPergunta + 2;
+  const banco = obterBanco();
+  const pesquisa = pesquisaId ? await buscarImportacao(pesquisaId, banco) : await buscarPesquisaAtual(banco);
+  if (!pesquisa) throw new ErroExportacao("Nenhuma pesquisa confirmada.", "PESQUISA_NOT_FOUND", 404);
+  if (pesquisa.status !== "confirmada") throw new ErroExportacao("Confirme a importação primeiro.", "IMPORT_NOT_CONFIRMED", 409);
+  const colunas = await banco<ColunaBanco>("coluna").where({ importacao_id: pesquisa.id }).orderBy("posicao_original");
+  const pergunta = scope === "question" && questionId ? colunas.find((coluna) => coluna.papel === "pergunta" &&
+    (coluna.id === questionId || coluna.codigo_referencia?.toLowerCase() === questionId.toLowerCase())) : undefined;
+  if (scope === "question" && !pergunta) {
+    throw new ErroExportacao("Selecione uma pergunta desta pesquisa.", "EXPORT_QUESTION_INVALID");
   }
-
-  return { format, scope, questionId, indicePergunta };
-}
-
-function projetarPergunta(linhas: unknown[][], indicePergunta: number) {
-  return linhas.map((linha) => [
-    linha[1] ?? null,
-    linha[indicePergunta] ?? null,
-  ]);
-}
-
-function serializarCsv(linhas: unknown[][]) {
-  const conteudo = linhas
-    .map((linha) =>
-      linha
-        .map((valor) => `"${String(valor ?? "").replaceAll('"', '""')}"`)
-        .join(";"),
-    )
-    .join("\r\n");
-
-  return Buffer.from(`\uFEFF${conteudo}`, "utf8");
-}
-
-async function exportarPerguntaXlsx(
-  questionId: string,
-  indicePergunta: number,
-): Promise<ResultadoExportacao> {
-  const fonte = await readFile(arquivoXlsx);
-  const workbook = XLSX.read(fonte, { type: "buffer", cellDates: true });
-  const nomePlanilha = workbook.SheetNames[0];
-  const planilha = nomePlanilha ? workbook.Sheets[nomePlanilha] : undefined;
-
-  if (!planilha) {
-    throw new ErroExportacao(
-      "A planilha da pesquisa não possui dados para exportar.",
-      "EXPORT_SOURCE_EMPTY",
-      422,
-    );
+  const participantes = await banco("participante").where({ importacao_id: pesquisa.id }).orderBy("indice_linha").select("id");
+  const respostas = await banco("resposta as r").join("participante as p", "p.id", "r.participante_id")
+    .where("p.importacao_id", pesquisa.id).select("r.participante_id", "r.coluna_id", "r.valor_bruto");
+  const valores = new Map(respostas.map((r) => [r.participante_id + ":" + r.coluna_id, r.valor_bruto as string | null]));
+  const selecionadas = pergunta ? [pergunta] : colunas;
+  const cabecalhos = selecionadas.map((coluna) => coluna.cabecalho_original);
+  const linhas: Array<Array<string | null>> = [
+    pergunta ? ["ID da resposta", ...cabecalhos] : cabecalhos,
+    ...participantes.map((participante) => {
+      const linha = selecionadas.map((coluna) => valores.get(participante.id + ":" + coluna.id) ?? null);
+      return pergunta ? [participante.id as string, ...linha] : linha;
+    }),
+  ];
+  const nome = pergunta ? "unifan-" + (pergunta.codigo_referencia ?? "pergunta") : "unifan-pesquisa-completa";
+  if (format === "csv") {
+    const texto = linhas.map((linha) => linha.map((valor) =>
+      '"' + String(valor ?? "").replaceAll('"', '""') + '"').join(";")).join("\r\n");
+    return { conteudo: Buffer.from("\uFEFF" + texto, "utf8"), nomeArquivo: nome + ".csv", mimeType: "text/csv; charset=utf-8" };
   }
-
-  const linhas = XLSX.utils.sheet_to_json<unknown[]>(planilha, {
-    header: 1,
-    raw: true,
-    defval: null,
-  });
-  const workbookExportacao = XLSX.utils.book_new();
-  const planilhaExportacao = XLSX.utils.aoa_to_sheet(
-    projetarPergunta(linhas, indicePergunta),
-  );
-  XLSX.utils.book_append_sheet(
-    workbookExportacao,
-    planilhaExportacao,
-    "Respostas",
-  );
-
+  const workbook = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(linhas), "Respostas");
   return {
-    conteudo: Buffer.from(
-      XLSX.write(workbookExportacao, { type: "buffer", bookType: "xlsx" }),
-    ),
-    nomeArquivo: `unifan-${questionId}.xlsx`,
-    mimeType:
-      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    conteudo: Buffer.from(XLSX.write(workbook, { type: "buffer", bookType: "xlsx" })),
+    nomeArquivo: nome + ".xlsx",
+    mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
   };
-}
-
-async function exportarPerguntaCsv(
-  questionId: string,
-  indicePergunta: number,
-): Promise<ResultadoExportacao> {
-  const fonte = await readFile(arquivoCsv, "utf8");
-  const linhas = parse(fonte, {
-    bom: true,
-    delimiter: ";",
-    relax_column_count: false,
-    skip_empty_lines: true,
-  }) as unknown[][];
-
-  return {
-    conteudo: serializarCsv(projetarPergunta(linhas, indicePergunta)),
-    nomeArquivo: `unifan-${questionId}.csv`,
-    mimeType: "text/csv; charset=utf-8",
-  };
-}
-
-export async function gerarExportacaoDados(
-  opcoes: OpcoesExportacao,
-): Promise<ResultadoExportacao> {
-  const { format, scope, questionId, indicePergunta } = validarOpcoes(opcoes);
-
-  if (format === "xlsx" && scope === "all") {
-    return {
-      conteudo: await readFile(arquivoXlsx),
-      nomeArquivo: "unifan-pesquisa-completa.xlsx",
-      mimeType:
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    };
-  }
-
-  if (!questionId || indicePergunta === undefined) {
-    throw new ErroExportacao(
-      "Selecione uma pergunta válida para exportar.",
-      "EXPORT_QUESTION_INVALID",
-    );
-  }
-
-  return format === "xlsx"
-    ? exportarPerguntaXlsx(questionId, indicePergunta)
-    : exportarPerguntaCsv(questionId, indicePergunta);
 }

@@ -765,10 +765,10 @@ export function ComponentsPage() {
                   <DonutChart
                     className="mt-6"
                     data={[
-                      { label: "Discreta", value: 8, tone: "brand" },
-                      { label: "Contínua", value: 5, tone: "warm" },
-                      { label: "Nominal", value: 9, tone: "positive" },
-                      { label: "Ordinal", value: 6, tone: "soft" },
+                      { label: "Discreta", value: 8, percentual: 28.6, tone: "brand" },
+                      { label: "Contínua", value: 5, percentual: 17.9, tone: "warm" },
+                      { label: "Nominal", value: 9, percentual: 32.1, tone: "positive" },
+                      { label: "Ordinal", value: 6, percentual: 21.4, tone: "soft" },
                     ]}
                     centerValue="28"
                     centerLabel="variáveis"
@@ -847,10 +847,10 @@ export function ComponentsPage() {
                   <PieChart
                     className="mt-5"
                     data={[
-                      { label: "ChatGPT", value: 608, tone: "brand" },
-                      { label: "Gemini", value: 206, tone: "warm" },
-                      { label: "Copilot", value: 84, tone: "positive" },
-                      { label: "Outras", value: 66, tone: "soft" },
+                      { label: "ChatGPT", value: 608, percentual: 63.1, tone: "brand" },
+                      { label: "Gemini", value: 206, percentual: 21.4, tone: "warm" },
+                      { label: "Copilot", value: 84, percentual: 8.7, tone: "positive" },
+                      { label: "Outras", value: 66, percentual: 6.8, tone: "soft" },
                     ]}
                     ariaLabel="Ferramentas de IA utilizadas"
                   />

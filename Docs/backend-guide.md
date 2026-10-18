@@ -1,227 +1,141 @@
-# Roteiro de construção do backend
+# Backend: funcionamento e próximos passos
 
-Este roteiro é para os integrantes que estão aprendendo a construir uma API.
-A base do SQLite está pronta; os membros implementarão os services, controllers,
-rotas, leitores e cálculos em etapas pequenas. Os arquivos com `TODO`s indicam
-onde começar e não contêm uma implementação dessas funcionalidades.
+## Estado atual
 
-## Preparação e ponto de partida
+O backend usa Node 24+, TypeScript executado diretamente, Fastify, Knex e
+SQLite com better-sqlite3. CSV usa csv-parse; XLSX e XLS usam SheetJS.
+O plugin @fastify/multipart recebe os uploads.
 
-Siga o [README do Backend](../Backend/README.md) para instalar e executar com
-Node 24+ e npm. Antes de programar, leia [AGENTS.md](../AGENTS.md),
-[import-format.md](./import-format.md), [mock-data.md](./mock-data.md),
-[questionnaire.md](./questionnaire.md) e [decisions.md](./decisions.md).
+Estão implementados:
 
-O conteúdo da branch `Backend-SQLite` já está na `main`. A `main` também possui
-melhorias posteriores: conexão compartilhada com Knex, checksums das migrations,
-migration de integridade e testes de banco. Use essa versão como base.
+- leitura de CSV e da primeira aba Excel não vazia;
+- upload, prévia, configuração das colunas e confirmação;
+- preservação dos valores brutos e normalização conforme o tipo confirmado;
+- armazenamento transacional e registro de problemas de conversão;
+- pesquisa atual, exclusão, listagem de perguntas e respostas paginadas;
+- exportação dos dados persistidos em XLSX e CSV;
+- integração da importação, visão geral, catálogo, análises e relatório no frontend;
+- frequências, medidas, histogramas, boxplot, totais e percentuais no backend.
 
-| Parte                                                         | Situação                                                     |
-| :------------------------------------------------------------ | :----------------------------------------------------------- |
-| Conexão SQLite com WAL, chaves estrangeiras e tempo de espera | Disponível em `Backend/src/database/conexao.ts`.             |
-| Schema e migrations versionadas                               | Disponíveis em `Backend/src/database/sql/` e `migracoes.ts`. |
-| Testes de banco                                               | Disponíveis em `Backend/src/database/database.test.ts`.      |
-| Pesquisa atual e limpeza                                      | Endpoints existentes, com estado mockado em memória.         |
-| Exportação XLSX/CSV                                           | Endpoint existente, com leitura dos arquivos mockados.       |
-| Upload, revisão e confirmação da importação                   | A implementar.                                               |
-| Consultas de perguntas e cálculos estatísticos                | A implementar.                                               |
+O dashboard consulta GET /api/pesquisas/:pesquisaId/dashboard. O service lê
+somente perguntas confirmadas e valores tratados do SQLite. As funções puras de
+estatistica/calculos.ts recebem os valores e devolvem medidas, frequências e
+metadados gráficos. Classes quantitativas incluem valor numérico; nas contínuas,
+o ponto médio é calculado no backend para posicionar o gráfico de pontos.
+O frontend não recalcula estatísticas nem usa fallback mock.
 
-Os mocks não carregam o SQLite automaticamente. Iniciar o servidor cria o
-schema, mas não importa respostas. As rotas novas só devem ser registradas
-quando o fluxo correspondente estiver implementado e documentado.
+## Organização
 
-## Responsabilidade de cada camada
+Fluxo: frontend → rota → controller → service → SQLite.
 
-O fluxo é: **frontend → API → rota → controller → service → SQLite**.
+| Pasta ou arquivo | Responsabilidade |
+| :--- | :--- |
+| routes/ | URLs, métodos e schemas básicos de entrada |
+| controllers/ | Parâmetros HTTP, arquivo recebido e envelope da resposta |
+| services/ | Coordenação, consultas e transações com Knex |
+| importacao/leitores/ | Extração da matriz CSV/Excel |
+| importacao/classificacao.ts | Sugestões de papel, tipo e categorias para revisão |
+| importacao/normalizacao.ts | Ausências, serialização bruta e conversão por tipo |
+| importacao/validacao.ts | Estrutura, quantidade de perguntas e limites de arquivo |
+| estatistica/calculos.ts | Frequências, medidas, classes de Sturges e boxplot, sem HTTP ou banco |
+| services/dashboard.service.ts | Consulta dos valores tratados e composição do dashboard |
+| types/importacao.ts e types/dashboard.ts | Tipos compartilhados |
+| database/ | Conexão, migrations e testes de integridade |
+| utils/erro-aplicacao.ts | Erro esperado com código e status |
+| app.ts | Montagem da aplicação, plugins, erros e rotas; permite Fastify inject |
+| server.ts | Configuração do ambiente e abertura da porta |
 
-| Pasta                      | O que construir                                                 | O que ela recebe ou entrega                                                            |
-| :------------------------- | :-------------------------------------------------------------- | :------------------------------------------------------------------------------------- |
-| `Backend/src/routes/`      | Registrar URLs e métodos do Fastify.                            | Conecta uma requisição ao controller.                                                  |
-| `Backend/src/controllers/` | Ler os parâmetros HTTP, aguardar o service e formar a resposta. | Usa `request` e `reply`, sem executar SQL.                                             |
-| `Backend/src/services/`    | Implementar regras, consultar e gravar com Knex.                | Recebe dados comuns e devolve resultados ou erros, sem depender de HTTP.               |
-| `Backend/src/database/`    | Manter a conexão, migrations e testes de integridade.           | Disponibiliza o banco para os services.                                                |
-| `Backend/src/importacao/`  | Criar leitores, normalização e validação da importação.         | Extrai valores dos arquivos e relata inconsistências. A pasta será criada nessa etapa. |
-| `Backend/src/types/`       | Compartilhar tipos usados por mais de uma camada.               | Não executa validação nem consultas.                                                   |
+Rotas e controllers não executam SQL. Funções de normalização e validação não
+dependem de HTTP ou banco. Imports locais usam extensão .ts; não há recursividade.
 
-`types/importacao.ts` fornece somente o vocabulário do schema e os tipos de
-célula e matriz bruta. Os membros devem definir os tipos de entrada e retorno
-de cada operação conforme o contrato escolhido. Um tipo TypeScript não garante
-que o conteúdo recebido pela API seja válido.
+## Fluxo da importação
 
-## Entender o schema
+1. POST /api/importacoes recebe um arquivo. O leitor retorna uma matriz, sem
+   usar cabeçalhos como chaves. O CSV detecta vírgula, ponto e vírgula ou TAB;
+   XLSX/XLS usam a primeira aba não vazia.
+2. O service gera UUIDs e grava a importação em revisão, colunas, participantes
+   e respostas brutas em uma transação.
+3. GET /api/importacoes/:id fornece tipos sugeridos, exemplos e problemas.
+   Identificação de metadados usa cabeçalhos usuais do Forms, sem fixar posições.
+4. O frontend permite corrigir papel, tipo e categoria na grade de configuração.
+   Categorias ordinais e exemplos ficam no detalhe da própria linha; o separador
+   decimal do CSV fica à esquerda da busca. PUT /:id/colunas salva todas as colunas.
+5. POST /:id/confirmar converte os dados. Com problemas de conversão, a revisão
+   permanece aberta e os problemas podem ser consultados. Com sucesso, a
+   importação passa a confirmada e se torna a pesquisa atual.
 
-Cada importação possui colunas e participantes. Cada resposta associa um
-participante a uma coluna. O modelo guarda uma linha por célula, em vez de
-criar uma coluna SQL para cada pergunta do formulário.
+As sugestões não substituem a revisão: números inteiros sugerem discreta,
+números fracionários sugerem contínua. Escolaridade, frequência e concordância
+possuem ordens sugeridas a partir dos rótulos planejados. Outros textos sugerem
+nominal, com categorias observadas. Uma contagem escrita como texto não é
+corrigida automaticamente. O questionário não está fixado no código.
 
-| Tabela                | Papel                                                  | Campos principais                                                                                                                         |
-| :-------------------- | :----------------------------------------------------- | :---------------------------------------------------------------------------------------------------------------------------------------- |
-| `importacao`          | Identificar o arquivo e o estágio da revisão.          | `id`, `nome_arquivo`, `formato`, `status`, `delimitador`, `separador_decimal`, `criado_em`, `atualizado_em`.                              |
-| `coluna`              | Preservar a coluna original e sua classificação.       | `id`, `importacao_id`, `posicao_original`, `cabecalho_original`, `papel`, `tipo_variavel`, `codigo_referencia`, `categorias_confirmadas`. |
-| `participante`        | Representar cada registro de origem.                   | `id`, `importacao_id`, `indice_linha`.                                                                                                    |
-| `resposta`            | Preservar o valor recebido e seu valor tratado.        | `id`, `participante_id`, `coluna_id`, `valor_bruto`, `valor_numerico`, `valor_categoria`.                                                 |
-| `problema_importacao` | Registrar inconsistências sem apagar o valor original. | `id`, `importacao_id`, `participante_indice_linha`, `coluna_id`, `valor_bruto`, `codigo`, `mensagem`, `criado_em`.                        |
-| `schema_migrations`   | Controlar migrations aplicadas.                        | `id`, `checksum`, `aplicada_em`. É mantida pelo runner.                                                                                   |
+Limites iniciais: 10 MB, 10.000 respostas e seleção de 1 a 30 perguntas.
+Cabeçalhos vazios são preservados e começam como não selecionados. Linhas
+inteiramente vazias são ignoradas; ausências nas perguntas tornam-se null.
+Datas CSV permanecem no texto original, inclusive AM/PM e GMT. Datas Excel
+são representadas como calendário ISO sem sufixo Z, sem inventar fuso.
+Diferenças de precisão da conversão Excel não são corrigidas silenciosamente.
 
-Os IDs são internos e textuais. A posição da coluna e o índice do registro
-preservam sua localização na fonte; em CSV, um registro pode ocupar mais de uma
-linha física. Cabeçalhos e IDs externos não substituem IDs internos.
+## Persistência
 
-Os papéis da coluna são `pergunta`, `metadado` e `nao_selecionada`. Os tipos de
-variável são `quantitativa_discreta`, `quantitativa_continua`,
-`qualitativa_nominal` e `qualitativa_ordinal`. Os status de importação são
-`rascunho`, `revisao`, `confirmada` e `erro`.
+O schema existente foi reutilizado, sem editar migrations aplicadas:
 
-As migrations existentes garantem parte da integridade:
+| Tabela | Papel |
+| :--- | :--- |
+| importacao | Arquivo, formato, status e dialeto CSV |
+| coluna | Posição, cabeçalho original, papel, tipo e categorias confirmadas |
+| participante | Registro da fonte e ID interno |
+| resposta | Uma célula por participante/coluna, com bruto e valor tratado |
+| problema_importacao | Registro, coluna, bruto, código e mensagem do problema |
+| schema_migrations | Histórico e checksums das migrations |
 
-- Colunas e participantes apontam para uma importação existente.
-- Participante e coluna de uma resposta devem pertencer à mesma importação.
-- Um problema associado a uma coluna deve pertencer à mesma importação dela.
-- Não há duas respostas para o mesmo par participante/coluna, nem duas colunas
-  na mesma posição ou dois participantes no mesmo índice de uma importação.
-- Excluir uma importação remove seus dados dependentes. Excluir uma coluna
-  mantém o problema relacionado, com `coluna_id` nulo.
-- Uma resposta não admite valor numérico e categórico simultaneamente.
-- Categorias confirmadas são armazenadas como texto contendo um array JSON.
-- A confirmação exige tipo nas perguntas e categorias nas perguntas ordinais;
-  alterações de colunas de uma importação confirmada exigem reabrir a revisão.
-- TAB é o caractere de tabulação real. A migration `002` corrige o texto literal
-  da versão inicial.
+O valor bruto é TEXT. Valores tratados usam valor_numerico ou valor_categoria,
+nunca ambos. Metadados e colunas não selecionadas conservam somente o bruto.
+Uma ausência tratada é null; um zero continua numérico. O índice do registro CSV
+não equivale necessariamente à linha física quando há quebras dentro de aspas.
 
-Essas proteções não substituem a validação do service. O limite de perguntas,
-os formatos de valores, a consistência da matriz e os limites específicos de
-cada pergunta também precisam ser validados pelos membros.
+Os services usam obterBanco(). Dentro de uma transação, todas as consultas
+usam trx. Inserções e conversões usam lotes pequenos para evitar uma consulta
+isolada por célula. Falhas inesperadas desfazem a transação. Problemas esperados
+de conversão são gravados e apresentados na revisão.
 
-`valor_bruto` é `TEXT`, enquanto `valor_numerico` é `REAL` e
-`valor_categoria` é `TEXT`. Ao persistir números, datas ou outros valores
-extraídos do Excel, definir e documentar uma representação do valor bruto que
-preserve seu significado. Ausências usam `null`; zero continua sendo válido.
+A pesquisa atual é a última confirmada por atualizado_em, com desempate pelo
+ID. Excluir a atual preserva outras importações e pode revelar uma anterior.
+Revisões não substituem a pesquisa atual até a confirmação.
 
-## Usar a conexão existente
+## Executar e validar
 
-Os services obtêm a instância compartilhada por `obterBanco()`. O Knex devolve
-Promises: as operações devem ser aguardadas com `await`. Por consequência,
-controllers que hoje chamam funções síncronas também precisarão de `await`
-quando esses services passarem a consultar o banco.
+Siga o README do Backend. Use npm ci, npm run typecheck e npm test.
+Os testes criam bancos temporários e não alteram o banco de desenvolvimento.
 
-`criarBanco(caminho)` permite criar uma instância separada para testes. O
-servidor aplica `executarMigracoes()` antes de registrar as rotas e fecha a
-instância compartilhada com `fecharBanco()` ao encerrar a aplicação. Cada
-service deve reutilizar essa conexão, sem abrir ou fechar outro banco por
-requisição.
+Se a inicialização falhar com `Could not locate the bindings file`, confira a
+instalação do driver nativo `better-sqlite3`. Reinstale com `npm ci` na pasta
+Backend, usando Node 24+ e o lockfile oficial. Uma instalação via outro
+gerenciador com scripts de build não executados pode deixar o pacote sem
+`better_sqlite3.node`. Não é necessário apagar o SQLite nem alterar o schema.
 
-Uma transação agrupa operações: todas são confirmadas juntas, ou todas são
-desfeitas se houver erro. Dentro da transação Knex, usar o objeto `trx` recebido
-em todas as consultas daquele grupo. Usar `obterBanco()` novamente dentro dela
-pode esperar por uma conexão que a própria transação está ocupando.
+O pnpm 12 pode reinstalar dependências antes de `pnpm run dev`, revertendo uma
+instalação feita com npm. Para manter o npm definido na DEC-001, a configuração
+local do backend usa `verifyDepsBeforeRun: false`; assim, executar scripts pelo
+pnpm não reinstala pacotes. Isso não altera permissões de build nem transforma
+o pnpm no gerenciador oficial. Novas instalações devem usar `npm ci`.
 
-## Etapas de implementação
+A suíte cobre migrations, CSV com aspas e quebras de linha, upload multipart,
+revisão, ordinais, zero, decimais, ausências, XLSX/XLS, rollback, limites,
+persistência após reabertura, exportação e exclusão. Os dois mocks são lidos e
+confirmados com 1.000 respostas, 25 perguntas, três metadados e 20 ausências;
+seus valores tratados das perguntas são comparados integralmente.
+A equivalência de calendários CSV/Excel continua separada dessa comparação.
+As análises completas dos dois mocks também são comparadas. Testes pequenos
+com resultados calculados à mão cobrem quartis interpolados, empates na moda,
+mediana ordinal, fronteiras de classes, densidade, amostra constante e ausência
+total. A API é testada com temas diferentes e exportação de uma pesquisa anterior.
 
-Execute uma etapa por vez. Defina a entrada, a saída e os casos de teste antes
-de escrever a regra. Ao concluir, atualize os contratos em [api.md](./api.md).
+## Próximas etapas
 
-### Etapa 1 — Consultar a pesquisa atual
+- Avaliar o CSV definitivo para ajustar as sugestões quando necessário,
+  preservando a revisão explícita dos tipos e das ordens.
+- A busca por link do Google Sheets continua pendente; uploads locais funcionam.
 
-Comece em `services/pesquisas.service.ts`, acompanhado de seu controller e rota
-existentes. Troque o mock por leitura da importação confirmada, contagem de
-participantes e contagem de colunas com papel `pergunta`.
-
-Antes de implementar, definir no contrato como escolher a pesquisa atual quando
-houver mais de uma importação confirmada e como obter o nome exibido da pesquisa.
-Conferir uma base vazia (`404`), uma importação em revisão e uma confirmada.
-Garantir que metadados não contem como perguntas. O nome original do arquivo
-deve continuar na resposta.
-
-### Etapa 2 — Limpar a pesquisa atual
-
-No mesmo service, substituir a limpeza em memória pela exclusão transacional
-da importação selecionada na etapa 1. Preservar a confirmação no frontend e a
-resposta `{ data: { cleared: true } }`.
-
-Conferir as tabelas dependentes antes e depois, a preservação de outras
-importações e o tratamento de falhas. Usar um banco de teste separado do banco
-local de desenvolvimento.
-
-### Etapa 3 — Ler os arquivos
-
-Criar os módulos `importacao/leitores/excel.ts` e `importacao/leitores/csv.ts`.
-Usar as bibliotecas já instaladas: `xlsx` para Excel e `csv-parse` para CSV.
-Retornar uma matriz de valores brutos para que o service possa revisar a
-estrutura antes de usar cabeçalhos como chaves.
-
-Seguir [mock-data.md](./mock-data.md): primeira aba não vazia do Excel, parser
-apropriado para CSV, BOM, delimitador e separador decimal. Não separar CSV com
-`split`. O grupo deve investigar a diferença de precisão das datas dos mocks
-registrada naquele documento antes de concluir a comparação integral.
-
-Conferir 1.000 registros, 28 colunas, 25 perguntas, 3 metadados e 20 células de
-resposta ausentes. Conferir zero, decimal, acentos e a categoria `Perplexity`.
-O formato `.xls` é previsto, mas ainda precisa de fixture própria.
-
-### Etapa 4 — Revisar e persistir a importação
-
-Comece no arquivo-base `services/importacao.service.ts`. Criar os módulos
-`importacao/normalizacao.ts` e `importacao/validacao.ts` conforme a necessidade.
-Definir o fluxo de rascunho, revisão das colunas e confirmação antes de ligar
-o upload ao frontend.
-
-Validar cabeçalhos, posições e quantidade de perguntas. Cada pergunta precisa
-de tipo confirmado; perguntas ordinais precisam de categorias em ordem
-confirmada. Preservar valores brutos e relatar números ou categorias inválidos
-em `problema_importacao`, sem transformá-los silenciosamente em ausência.
-
-Conferir a seleção de 1 e 30 perguntas, a rejeição da 31ª, ausências, zero,
-categorias ordinais e erro durante uma transação. Usar IDs internos estáveis
-durante a revisão. Definir os retornos para que o frontend consiga apresentar
-os problemas ao usuário.
-
-### Etapa 5 — Expor a importação na API
-
-Usar `controllers/importacao.controller.ts` e `routes/importacao.routes.ts`.
-Definir em `api.md` as URLs, os métodos, os formatos de entrada e retorno e os
-limites de upload. Escolher e justificar o suporte a upload do Fastify quando
-for necessário; essa dependência ainda não foi adicionada.
-
-O controller aguarda o service e forma a resposta. A rota registra o handler.
-Depois, registrar o módulo no `server.ts`. Conferir sucesso, formato inválido,
-limite excedido e erro interno com o envelope padrão. Só então integrar a tela
-de importação do frontend.
-
-### Etapa 6 — Consultar e analisar perguntas
-
-Usar os arquivos-base `perguntas.service.ts`, `perguntas.controller.ts` e
-`perguntas.routes.ts`. Primeiro implementar listagem e leitura de uma pergunta;
-depois frequências; por último medidas e dados para gráficos.
-
-Conferir se pesquisa e pergunta pertencem à mesma importação. Separar ausentes
-de válidos e preservar zero. Usar uma amostra pequena com resultado calculado
-à mão antes de testar as 1.000 respostas mockadas.
-
-Seguir [business-rules.md](./business-rules.md) para medidas e visualizações de
-cada tipo. A convenção dos quartis permanece pendente: definir e registrar a
-decisão antes de implementar. Documentar o contrato e registrar as rotas quando
-o fluxo estiver pronto.
-
-### Etapa 7 — Exportar os dados persistidos
-
-Comece no `services/exportacoes.service.ts` existente. Substituir a leitura dos
-mocks por dados da importação confirmada, mantendo os formatos, os cabeçalhos e
-os contratos definidos em `api.md`.
-
-Conferir pesquisa inteira em XLSX e pergunta em XLSX/CSV, incluindo ID da
-resposta, valores originais, ausências, zero e caracteres especiais. Definir
-como uma pergunta será identificada após a importação, pois os IDs fixos `q01`
-a `q25` pertencem ao mock e não atendem a qualquer formulário.
-
-## Conferir cada entrega
-
-Execute `npm run typecheck` e os testes pertinentes à etapa. Compare as respostas
-HTTP com `api.md` e explique ao grupo quais casos foram conferidos. Escreva
-testes que comprovem resultados ou regras, incluindo erros e rollback quando
-a etapa grava dados.
-
-Em 05/10/2026, a instalação com `npm ci`, a checagem de tipos e os seis testes
-existentes de SQLite foram validados com Node 24. Esses testes cobrem migrations,
-atualização de banco legado, TAB/zero, referências entre importações,
-confirmação ordinal e exclusão em cascata; não comprovam uma importação ou uma
-análise estatística completas.
+Os contratos e exemplos de payload estão em [api.md](./api.md).

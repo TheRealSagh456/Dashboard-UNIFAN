@@ -9,7 +9,7 @@
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
     "setup": "node setup.js",
-    "test": "node --test --test-isolation=none src/database/database.test.ts"
+    "test": "node --test --test-isolation=none src/database/database.test.ts src/importacao/importacao.test.ts src/estatistica/calculos.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -19,6 +19,7 @@
     "node": ">=24.0.0"
   },
   "dependencies": {
+    "@fastify/multipart": "^10.1.4",
     "@types/node": "^26.4.0",
     "better-sqlite3": "^12.6.2",
     "csv-parse": "7.0.2",

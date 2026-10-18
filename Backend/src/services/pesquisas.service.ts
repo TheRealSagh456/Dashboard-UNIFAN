@@ -1,39 +1,29 @@
-type EstadoPesquisaAtual = {
-  possuiDados: boolean;
-  pesquisa: {
-    id: string;
-    nome: string;
-    nomeArquivoOriginal: string;
-    totalRespostas: number;
-    totalPerguntas: number;
-  };
-};
+import { obterBanco } from "../database/conexao.ts";
+import type { ImportacaoBanco } from "../types/importacao.ts";
 
-// O schema SQLite já existe, mas este serviço ainda usa o mock da V5.
-// TODO(membros): substituir o estado abaixo por consultas com obterBanco().
-// A pesquisa atual deve vir de uma importação confirmada; definir a seleção
-// em Docs/api.md antes de implementar. Roteiro: Docs/backend-guide.md, etapa 1.
-const estadoPesquisaAtual: EstadoPesquisaAtual = {
-  possuiDados: true,
-  pesquisa: {
-    id: "pesquisa-tecnologia-2026",
-    nome: "Pesquisa sobre tecnologia",
-    nomeArquivoOriginal: "pesquisa_tecnologia-2026.xlsx",
-    totalRespostas: 1000,
-    totalPerguntas: 25,
-  },
-};
-
-export function obterPesquisaAtual() {
-  return estadoPesquisaAtual.possuiDados ? estadoPesquisaAtual.pesquisa : null;
+export async function buscarPesquisaAtual(banco = obterBanco()) {
+  return banco<ImportacaoBanco>("importacao").where({ status: "confirmada" })
+    .orderBy("atualizado_em", "desc").orderBy("id", "desc").first();
 }
 
-export function limparDadosDaPesquisaAtual() {
-  // TODO(membros): implementar a exclusão no SQLite em uma transação (etapa 2).
-  // Preservar o contrato { cleared: true } e propagar falhas ao controller.
-  estadoPesquisaAtual.possuiDados = false;
-
+export async function obterPesquisaAtual() {
+  const banco = obterBanco();
+  const pesquisa = await buscarPesquisaAtual(banco);
+  if (!pesquisa) return null;
+  const respostas = await banco("participante").where({ importacao_id: pesquisa.id }).count({ total: "id" }).first();
+  const perguntas = await banco("coluna").where({ importacao_id: pesquisa.id, papel: "pergunta" }).count({ total: "id" }).first();
   return {
-    cleared: true,
+    id: pesquisa.id,
+    nome: pesquisa.nome_arquivo.replace(/\.[^.]+$/, "").replace(/[_-]+/g, " ").trim(),
+    nomeArquivoOriginal: pesquisa.nome_arquivo,
+    totalRespostas: Number(respostas?.total ?? 0), totalPerguntas: Number(perguntas?.total ?? 0),
   };
+}
+
+export async function limparDadosDaPesquisaAtual() {
+  await obterBanco().transaction(async (trx) => {
+    const pesquisa = await buscarPesquisaAtual(trx);
+    if (pesquisa) await trx("importacao").where({ id: pesquisa.id }).delete();
+  });
+  return { cleared: true };
 }

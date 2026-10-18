@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import { mockRequestDelay } from "./api";
 
 export type ExportFormat = "jpeg" | "pdf" | "xlsx" | "csv";
 export type VisualExportScope = "current" | "full";
@@ -16,6 +15,7 @@ type DashboardPdfExportOptions = {
 };
 
 type DataExportOptions = {
+  pesquisaId?: string;
   format: "xlsx" | "csv";
   scope: DataExportScope;
   questionId?: string;
@@ -311,19 +311,18 @@ function fileNameFromDisposition(disposition: string | null, fallback: string) {
 }
 
 export async function exportData({
+  pesquisaId,
   format,
   scope,
   questionId,
 }: DataExportOptions) {
   const params = new URLSearchParams({ format, scope });
   if (questionId) params.set("questionId", questionId);
+  if (pesquisaId) params.set("pesquisaId", pesquisaId);
 
-  const [response] = await Promise.all([
-    fetch(`/api/exportacoes/dados?${params}`, {
-      headers: { Accept: "application/octet-stream, application/json" },
-    }),
-    mockRequestDelay(),
-  ]);
+  const response = await fetch(`/api/exportacoes/dados?${params}`, {
+    headers: { Accept: "application/octet-stream, application/json" },
+  });
 
   if (!response.ok) {
     const body = (await response.json().catch(() => null)) as {

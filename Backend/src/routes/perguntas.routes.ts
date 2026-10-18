@@ -1,9 +1,10 @@
-// Etapa 6 de Docs/backend-guide.md. Implementação a cargo dos membros.
-//
-// TODO: documentar em Docs/api.md os endpoints de listagem e análise.
-// TODO: registrar os endpoints Fastify apontando para os controllers.
-// TODO: registrar este módulo em server.ts após concluir e validar o fluxo.
-//
-// Este arquivo ainda não publica endpoints. Regras e SQL ficam no service.
+import type { FastifyInstance } from "fastify";
+import { dashboardController, listarPerguntasController, obterPerguntaController } from "../controllers/perguntas.controller.ts";
 
-export {};
+export async function perguntasRoutes(app: FastifyInstance) {
+  app.get("/api/pesquisas/:pesquisaId/dashboard", dashboardController);
+  app.get("/api/pesquisas/:pesquisaId/perguntas", listarPerguntasController);
+  app.get("/api/pesquisas/:pesquisaId/perguntas/:perguntaId", {
+    schema: { querystring: { type: "object", properties: { pagina: { type: "integer", minimum: 1, default: 1 } } } },
+  }, obterPerguntaController);
+}

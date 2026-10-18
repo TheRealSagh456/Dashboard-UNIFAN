@@ -1,0 +1,6 @@
+allowBuilds:
+  better-sqlite3: false
+
+# As dependências deste projeto são instaladas com npm ci.
+# Executar um script pelo pnpm não deve substituir essa instalação.
+verifyDepsBeforeRun: false

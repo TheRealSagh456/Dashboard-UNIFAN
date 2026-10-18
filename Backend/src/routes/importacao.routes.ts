@@ -1,11 +1,25 @@
-// Etapa 5 de Docs/backend-guide.md. Implementação a cargo dos membros.
-//
-// TODO: definir URLs, métodos, entradas e limites de upload em Docs/api.md.
-// TODO: escolher o suporte a upload necessário e justificar a dependência.
-// TODO: registrar os endpoints Fastify apontando para os controllers.
-// TODO: registrar este módulo em server.ts quando o fluxo estiver pronto.
-//
-// Este arquivo ainda não publica endpoints. A rota não deve ler arquivos,
-// calcular estatísticas ou executar SQL.
+import type { FastifyInstance } from "fastify";
+import { importarController, revisaoController, salvarRevisaoController, confirmarController } from "../controllers/importacao.controller.ts";
 
-export {};
+export async function importacaoRoutes(app: FastifyInstance) {
+  app.post("/api/importacoes", {
+    schema: { querystring: { type: "object", properties: { delimitador: { type: "string", enum: [",", ";", "\t"] } } } },
+  }, importarController);
+  app.get("/api/importacoes/:id", revisaoController);
+  app.put("/api/importacoes/:id/colunas", {
+    schema: { body: {
+      type: "object", required: ["colunas"], properties: {
+        separadorDecimal: { type: "string", enum: [",", "."] },
+        colunas: { type: "array", minItems: 1, items: {
+          type: "object", required: ["id", "papel", "tipoVariavel", "categorias"], properties: {
+            id: { type: "string", minLength: 1 },
+            papel: { type: "string", enum: ["pergunta", "metadado", "nao_selecionada"] },
+            tipoVariavel: { anyOf: [{ type: "null" }, { type: "string", enum: ["quantitativa_discreta", "quantitativa_continua", "qualitativa_nominal", "qualitativa_ordinal"] }] },
+            categorias: { type: "array", items: { type: "string" } },
+          },
+        } },
+      },
+    } },
+  }, salvarRevisaoController);
+  app.post("/api/importacoes/:id/confirmar", confirmarController);
+}

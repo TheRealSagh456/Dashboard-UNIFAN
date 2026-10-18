@@ -32,6 +32,7 @@ export type {
   CategoriaQualitativa,
   CategoriaQuantitativa,
   CategoriaVariavel,
+  PapelColuna,
   PerguntaRow,
   QuestionGridAlignment,
   QuestionGridColumn,

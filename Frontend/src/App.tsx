@@ -43,7 +43,7 @@ export default function App() {
         />
         <Route
           path="/home"
-          element={<Navigate to="/home/pesquisa-tecnologia-2026" replace />}
+          element={<HomePage />}
         />
         <Route path="/home/:pesquisaId" element={<HomePage />} />
         <Route

@@ -1,33 +1,9 @@
-import fastify from "fastify";
 import dotenv from "dotenv";
-import { fecharBanco, obterBanco } from "./database/conexao.ts";
-import { executarMigracoes } from "./database/migracoes.ts";
-import { pesquisasRoutes } from "./routes/pesquisas.routes.ts";
-import { exportacoesRoutes } from "./routes/exportacoes.routes.ts";
+import { criarApp } from "./app.ts";
 
 dotenv.config();
 
-const app = fastify({ logger: true });
-
-const banco = obterBanco();
-const migracoes = await executarMigracoes(banco);
-if (migracoes.length > 0) {
-  app.log.info(`Migrations aplicadas: ${migracoes.join(", ")}`);
-}
-
-await app.register(pesquisasRoutes);
-await app.register(exportacoesRoutes);
-
-// TODO(membros): registrar as rotas de importação e perguntas após implementar
-// seus controllers e services e documentar os contratos em Docs/api.md.
-
-app.addHook("onClose", async () => {
-  await fecharBanco();
-});
-
-app.get("/health", async () => {
-  return { data: { status: "vivinho da silva" } };
-});
+const app = await criarApp();
 
 const portaConfigurada = Number.parseInt(process.env.PORT ?? "", 10);
 const PORT = Number.isInteger(portaConfigurada) ? portaConfigurada : 3333;

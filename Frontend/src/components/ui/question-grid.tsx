@@ -19,18 +19,22 @@ export type TipoVariavel = "Quantitativa" | "Qualitativa";
 export type CategoriaQuantitativa = "Discreta" | "Contínua";
 export type CategoriaQualitativa = "Nominal" | "Ordinal";
 export type CategoriaVariavel = CategoriaQualitativa | CategoriaQuantitativa;
+export type PapelColuna = "Pergunta" | "Metadado" | "Não analisar";
 
 export type PerguntaRow = {
   id: string;
   codigo: string;
   enunciado: string;
-  papel: "Pergunta" | "Metadado";
+  papel: PapelColuna;
   tipo: TipoVariavel | null;
   categoria: CategoriaVariavel | null;
+  ordemCategorias?: string;
+  exemplos?: Array<string | null>;
 };
 
 export type QuestionGridColumn =
   | "codigo"
+  | "papel"
   | "enunciado"
   | "tipo"
   | "categoria";
@@ -46,6 +50,12 @@ const tipoOptions: readonly TagOption[] = [
   { value: "Qualitativa", dotColor: "l-green" },
 ];
 
+const papelOptions: readonly TagOption[] = [
+  { value: "Pergunta", dotColor: "blue" },
+  { value: "Metadado", dotColor: "muted" },
+  { value: "Não analisar", dotColor: "muted" },
+];
+
 const categoriaOptions: Record<TipoVariavel, readonly TagOption[]> = {
   Quantitativa: [
     { value: "Discreta", dotColor: "orange" },
@@ -59,6 +69,7 @@ const categoriaOptions: Record<TipoVariavel, readonly TagOption[]> = {
 
 const columnLabels: Record<QuestionGridColumn, string> = {
   codigo: "Código",
+  papel: "Papel",
   enunciado: "Pergunta",
   tipo: "Tipo",
   categoria: "Categoria",
@@ -66,6 +77,7 @@ const columnLabels: Record<QuestionGridColumn, string> = {
 
 const defaultColumnWidths: Record<QuestionGridColumn, string> = {
   codigo: "minmax(5.5rem, 0.55fr)",
+  papel: "minmax(10rem, 1fr)",
   enunciado: "minmax(17rem, 2.4fr)",
   tipo: "minmax(10rem, 1fr)",
   categoria: "minmax(10rem, 1fr)",
@@ -78,17 +90,17 @@ const sizeStyles: Record<
   compact: {
     header: "px-3 py-2",
     cell: "px-3 py-1.5",
-    minWidth: "min-w-[42rem]",
+    minWidth: "min-w-[50rem]",
   },
   default: {
     header: "px-4 py-3",
     cell: "px-4 py-2.5",
-    minWidth: "min-w-[46rem]",
+    minWidth: "min-w-[54rem]",
   },
   comfortable: {
     header: "px-5 py-4",
     cell: "px-5 py-4",
-    minWidth: "min-w-[50rem]",
+    minWidth: "min-w-[58rem]",
   },
 };
 
@@ -258,6 +270,15 @@ export function QuestionsGrid({
     onRowChange?.({ ...row, categoria });
   }
 
+  function changePapel(row: PerguntaRow, papel: PapelColuna) {
+    onRowChange?.({
+      ...row,
+      papel,
+      tipo: papel === "Pergunta" ? (row.tipo ?? "Qualitativa") : null,
+      categoria: papel === "Pergunta" ? (row.categoria ?? "Nominal") : null,
+    });
+  }
+
   function cellClasses(column: QuestionGridColumn) {
     return cn(
       "flex min-w-0 items-center text-sm text-ink",
@@ -395,15 +416,51 @@ export function QuestionsGrid({
                     {row.codigo}
                   </span>
                 </div>
+                <div role="gridcell" className={cellClasses("papel")}>
+                  <Tag
+                    variant="grid"
+                    tag={row.papel}
+                    options={papelOptions}
+                    disabled={!editable}
+                    onValueChange={editable ? (value) => changePapel(row, value as PapelColuna) : undefined}
+                    selectLabel={`Alterar o papel de ${row.codigo}`}
+                  />
+                </div>
                 <div role="gridcell" className={cellClasses("enunciado")}>
-                  <span className="leading-5">{row.enunciado}</span>
+                  <div className="min-w-0 flex-1">
+                    <span className="leading-5">{row.enunciado}</span>
+                    {(row.exemplos || (row.papel === "Pergunta" && row.categoria === "Ordinal" && row.ordemCategorias !== undefined)) && (
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs font-medium text-brand-700">
+                          {row.papel === "Pergunta" && row.categoria === "Ordinal" ? "Categorias e exemplos" : "Ver exemplos"}
+                        </summary>
+                        {row.exemplos && (
+                          <p className="mt-2 break-words text-xs leading-5 text-muted">
+                            {row.exemplos.filter((valor) => valor?.trim()).join(" · ") || "Sem respostas"}
+                          </p>
+                        )}
+                        {row.papel === "Pergunta" && row.categoria === "Ordinal" && row.ordemCategorias !== undefined && (
+                          <label className="mt-2 grid gap-1 text-xs text-muted">
+                            Categorias da menor para a maior, uma por linha
+                            <textarea
+                              className="min-h-32 w-full rounded-lg border border-line bg-paper p-2 text-sm text-ink outline-none focus:border-brand-500 focus:ring-2 focus:ring-brand-200"
+                              value={row.ordemCategorias}
+                              readOnly={!editable}
+                              aria-label={`Ordem das categorias de ${row.codigo}`}
+                              onChange={(event) => onRowChange?.({ ...row, ordemCategorias: event.target.value })}
+                            />
+                          </label>
+                        )}
+                      </details>
+                    )}
+                  </div>
                 </div>
                 <div role="gridcell" className={cellClasses("tipo")}>
                   <Tag
                     variant="grid"
                     tag={row.tipo}
                     options={tipoOptions}
-                    disabled={!editable}
+                    disabled={!editable || row.papel !== "Pergunta"}
                     onValueChange={
                       editable
                         ? (value) => changeTipo(row, value as TipoVariavel)
@@ -417,7 +474,7 @@ export function QuestionsGrid({
                     variant="grid"
                     tag={row.categoria}
                     options={row.tipo ? categoriaOptions[row.tipo] : undefined}
-                    disabled={!editable || !row.tipo}
+                    disabled={!editable || row.papel !== "Pergunta" || !row.tipo}
                     onValueChange={
                       editable && row.tipo
                         ? (value) =>

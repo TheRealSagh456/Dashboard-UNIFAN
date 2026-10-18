@@ -1,9 +1,8 @@
 # Regras de negócio do dashboard
 
-Este documento registra as regras funcionais usadas no
-dashboard de perguntas. Os valores exibidos atualmente no frontend são dados
-demonstrativos e deverão ser substituídos pelos resultados calculados pelo
-backend após a integração da API.
+Este documento registra as regras funcionais do dashboard. As telas e o relatório
+consomem as análises da pesquisa confirmada no SQLite, calculadas no backend.
+O frontend formata os valores e desenha os gráficos.
 
 ## Navegação
 
@@ -54,9 +53,22 @@ exibidas. Uma medida não aplicável deve ser omitida, e não representada como 
 | Qualitativa nominal | Moda |
 | Qualitativa ordinal | Mediana e moda |
 
-A convenção matemática dos quartis permanece pendente de confirmação. Os
-quartis demonstrativos da interface não definem o cálculo que será adotado pelo
-backend.
+Mediana e quartis numéricos usam interpolação linear na posição `(n - 1) × p`,
+com os valores ordenados e p igual a 0,5, 0,25 ou 0,75. As medidas usam os valores
+individuais, mesmo quando a distribuição é agrupada. Moda devolve todos os empates;
+se todos os valores ocorrerem uma única vez e n > 1, a amostra é amodal. Uma única
+resposta possui moda igual ao próprio valor. Sem respostas válidas, medidas e
+boxplot são omitidos.
+
+Categorias ordinais seguem a ordem confirmada na revisão. Para n par com duas
+categorias centrais diferentes, a mediana devolve ambas, sem inventar uma média
+entre rótulos. Categorias confirmadas sem observações aparecem com frequência zero.
+
+Histogramas usam `ceil(1 + log2(n))` classes de mesma amplitude entre mínimo e
+máximo, sem arredondar os limites utilizados no cálculo. Cada intervalo inclui
+o limite inferior e exclui o superior; a última classe também inclui o máximo.
+Uma amostra constante usa uma classe de amplitude 1, centrada no valor.
+O boxplot usa mínimo, Q1, mediana, Q3 e máximo, sem remover outliers.
 
 ## Visualizações permitidas
 
@@ -67,7 +79,7 @@ backend.
 | Qualitativa nominal | Barras e pizza |
 | Qualitativa ordinal | Colunas e pontos |
 
-O backend deverá devolver os gráficos permitidos e o gráfico recomendado para
+O backend devolve os gráficos permitidos e o gráfico recomendado para
 cada pergunta. O frontend não deve oferecer uma visualização incompatível.
 
 Colunas, barras e pontos são exibidos com eixo horizontal e vertical. O eixo de
@@ -76,7 +88,13 @@ usa `Quantidade`. Histogramas usam limites numéricos no eixo horizontal e
 `Densidade de frequência` no vertical. O boxplot horizontal usa somente o eixo
 quantitativo, sem inventar uma segunda grandeza. As marcações numéricas usam uma
 escala de intervalos arredondados da sequência 1, 2, 2,5, 5 e 10 multiplicada
-por uma potência de dez, escolhida a partir do maior valor. O máximo divisor
+por uma potência de dez, escolhida a partir dos valores recebidos. Contagens usam
+marcações inteiras; densidades podem usar escalas inteiramente abaixo de 1.
+Colunas, pontos, barras e histogramas acrescentam um intervalo ao limite da
+escala de frequência, deixando um bloco livre além do maior valor. Por exemplo,
+frequência máxima 10 e intervalo 2 produzem um eixo até 12.
+O boxplot ajusta o eixo ao mínimo e máximo observados, inclusive negativos e
+amostras constantes. O máximo divisor
 comum não é usado porque pode gerar intervalos pouco legíveis.
 
 No hover ou foco, o item ativo exibe tooltip e uma linha-guia pontilhada apenas
@@ -88,9 +106,17 @@ interação também deve funcionar por teclado.
 
 Barras usam três níveis da paleta: claro no estado básico, intermediário no
 hover e forte na seleção. Elas têm espaçamento, contorno e base reta alinhada ao
-eixo. Somente os cantos que não encostam no eixo podem ser arredondados. Os
+eixo. Barras horizontais e colunas verticais têm todos os cantos retos. Os
 rótulos das categorias permanecem horizontais e centralizados em relação às
-respectivas barras ou marcas.
+respectivas barras ou marcas. Textos longos podem ocupar até três linhas. Quando
+há muitos valores, somente os rótulos são espaçados; nenhuma marca ou frequência
+é removida. O texto completo continua disponível no tooltip.
+
+Nos pontos quantitativos, o eixo horizontal usa o valor numérico recebido, e não
+a posição da categoria. Para classes contínuas, o backend fornece seu ponto médio.
+Nos pontos ordinais, a distância entre categorias permanece uniforme. A sequência
+de entrada de todos os pontos termina em aproximadamente 1,1 segundo, qualquer
+que seja a quantidade de valores.
 
 Histogramas têm barras contíguas, sem vãos ou cantos arredondados. A largura é
 proporcional à amplitude de cada classe; a altura usa a densidade absoluta
@@ -106,7 +132,9 @@ independentes. A convenção de inclusão das fronteiras pertence ao backend.
 O gráfico de pizza é preenchido, sem abertura central. A rosca é reservada à
 visão geral dos tipos de variável. Uma categoria com 100% deve formar um círculo
 completo (ou uma rosca completa na visão geral); categorias de frequência zero
-não desenham setores. A caixa do boxplot tem cantos retos e mantém os cinco
+não desenham setores. Mais de cinco categorias sem cor explícita recebem cores
+distintas e correspondentes à legenda. Sem frequências positivas, pizza e rosca
+exibem uma mensagem de ausência de dados. A caixa do boxplot tem cantos retos e mantém os cinco
 valores recebidos, sem recalcular quartis ou definir um tratamento de outliers.
 Ao abrir o gráfico de pontos, a linha é
 desenhada do primeiro ao último ponto e as marcas aparecem em sequência. A
@@ -171,29 +199,29 @@ suas definições em tooltip no hover e no foco de teclado.
   selecionada. CSV fica restrito a esse escopo para evitar um segundo formato
   redundante da pesquisa inteira.
 - A seleção e geração dos arquivos de dados pertencem ao backend. O frontend
-  envia somente formato, escopo e identificador da pergunta para a API.
+  envia formato, escopo, identificador da pesquisa e da pergunta para a API.
 - PDF e JPEG são composições visuais e, por isso, são produzidos no frontend
   com o tema visualizado. Metadados como o nome original da planilha continuam
   vindo da API.
 - Formato, escopo e pergunta devem ser validados novamente pelo backend; valores
   inválidos usam a estrutura de erro padrão da API.
 
-## Contrato esperado do backend
+## Contrato do backend
 
-Para cada pergunta, o frontend precisará receber pelo menos:
+GET /api/pesquisas/:pesquisaId/dashboard fornece para cada pergunta:
 
 - identificador, código, enunciado, tipo e categoria;
 - unidade, quando aplicável;
 - total de respostas válidas e ausentes;
 - medidas estatísticas aplicáveis;
 - gráficos permitidos e gráfico recomendado;
-- distribuição com rótulo da classe e frequência absoluta;
+- distribuição com rótulo, frequências absolutas, relativas, acumuladas e percentuais;
 - para histogramas, limites inferior e superior finitos de cada classe e sua
   densidade absoluta, calculados no backend;
 - resumo de cinco números para o boxplot quando ele for permitido.
 
-O frontend pode calcular as frequências acumuladas e relativas a partir de `fi`,
-mas a responsabilidade pelo cálculo das medidas estatísticas pertence ao
-backend. A definição de classes, suas amplitudes e densidades também pertence
-ao backend. Os metadados de histograma no frontend atual são demonstrativos;
-a API de análises estatísticas ainda não os expõe.
+Todos os cálculos estatísticos pertencem ao backend, inclusive totais,
+ausências, percentuais da visão geral e dos tooltips e frequências acumuladas
+e relativas. O frontend apenas formata números e transforma valores em geometria
+de tela. Não há fallback para dados demonstrativos; falhas da API mostram erro
+com nova tentativa ou acesso à importação. A rota /home consulta a pesquisa atual.
