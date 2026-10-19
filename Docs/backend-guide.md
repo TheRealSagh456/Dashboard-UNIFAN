@@ -35,6 +35,7 @@ Fluxo: frontend → rota → controller → service → SQLite.
 | services/ | Coordenação, consultas e transações com Knex |
 | importacao/leitores/ | Extração da matriz CSV/Excel |
 | importacao/classificacao.ts | Sugestões de papel, tipo e categorias para revisão |
+| importacao/respostas-multiplas.ts | Separação e sugestão revisável de alternativas |
 | importacao/normalizacao.ts | Ausências, serialização bruta e conversão por tipo |
 | importacao/validacao.ts | Estrutura, quantidade de perguntas e limites de arquivo |
 | estatistica/calculos.ts | Frequências, medidas, classes de Sturges e boxplot, sem HTTP ou banco |
@@ -79,7 +80,11 @@ Diferenças de precisão da conversão Excel não são corrigidas silenciosament
 
 ## Persistência
 
-O schema existente foi reutilizado, sem editar migrations aplicadas:
+O schema existente é mantido por migrations versionadas, sem editar as aplicadas.
+A migration 003 acrescenta respostas_multiplas à coluna: 0/1 em novas revisões,
+null para detecção compatível em importações anteriores. O texto bruto e as
+respostas existentes são preservados.
+
 
 | Tabela | Papel |
 | :--- | :--- |
@@ -128,7 +133,9 @@ confirmados com 1.000 respostas, 25 perguntas, três metadados e 20 ausências;
 seus valores tratados das perguntas são comparados integralmente.
 A equivalência de calendários CSV/Excel continua separada dessa comparação.
 As análises completas dos dois mocks também são comparadas. Testes pequenos
-com resultados calculados à mão cobrem quartis interpolados, empates na moda,
+com resultados calculados à mão cobrem respostas múltiplas, percentuais por
+participante, repetição de alternativas, compatibilidade anterior e dados brutos,
+quartis interpolados, empates na moda,
 mediana ordinal, fronteiras de classes, densidade, amostra constante e ausência
 total. A API é testada com temas diferentes e exportação de uma pesquisa anterior.
 

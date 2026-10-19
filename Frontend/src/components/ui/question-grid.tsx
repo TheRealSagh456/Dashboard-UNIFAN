@@ -30,6 +30,7 @@ export type PerguntaRow = {
   categoria: CategoriaVariavel | null;
   ordemCategorias?: string;
   exemplos?: Array<string | null>;
+  respostasMultiplas?: boolean;
 };
 
 export type QuestionGridColumn =
@@ -260,6 +261,7 @@ export function QuestionsGrid({
     onRowChange?.({
       ...row,
       tipo,
+      respostasMultiplas: tipo === "Qualitativa" && row.categoria === "Nominal" ? row.respostasMultiplas : false,
       categoria: categoriaCompativel
         ? row.categoria
         : (categoriaOptions[tipo][0].value as CategoriaVariavel),
@@ -267,13 +269,14 @@ export function QuestionsGrid({
   }
 
   function changeCategoria(row: PerguntaRow, categoria: CategoriaVariavel) {
-    onRowChange?.({ ...row, categoria });
+    onRowChange?.({ ...row, categoria, respostasMultiplas: categoria === "Nominal" ? row.respostasMultiplas : false });
   }
 
   function changePapel(row: PerguntaRow, papel: PapelColuna) {
     onRowChange?.({
       ...row,
       papel,
+      respostasMultiplas: papel === "Pergunta" ? row.respostasMultiplas : false,
       tipo: papel === "Pergunta" ? (row.tipo ?? "Qualitativa") : null,
       categoria: papel === "Pergunta" ? (row.categoria ?? "Nominal") : null,
     });
@@ -432,12 +435,25 @@ export function QuestionsGrid({
                     {(row.exemplos || (row.papel === "Pergunta" && row.categoria === "Ordinal" && row.ordemCategorias !== undefined)) && (
                       <details className="mt-2">
                         <summary className="cursor-pointer text-xs font-medium text-brand-700">
-                          {row.papel === "Pergunta" && row.categoria === "Ordinal" ? "Categorias e exemplos" : "Ver exemplos"}
+                          {row.papel === "Pergunta" && row.categoria === "Ordinal" ? "Categorias e exemplos" : "Exemplos e opções"}
                         </summary>
                         {row.exemplos && (
                           <p className="mt-2 break-words text-xs leading-5 text-muted">
                             {row.exemplos.filter((valor) => valor?.trim()).join(" · ") || "Sem respostas"}
                           </p>
+                        )}
+                        {row.papel === "Pergunta" && row.categoria === "Nominal" && row.respostasMultiplas !== undefined && (
+                          <label className="mt-2 flex items-start gap-2 text-xs leading-5 text-muted">
+                            <input
+                              type="checkbox"
+                              className="mt-1 accent-brand-600"
+                              checked={row.respostasMultiplas}
+                              disabled={!editable}
+                              aria-label={`Respostas múltiplas de ${row.codigo}`}
+                              onChange={(event) => onRowChange?.({ ...row, respostasMultiplas: event.target.checked })}
+                            />
+                            Permitir várias alternativas por participante, separadas por ponto e vírgula (;).
+                          </label>
                         )}
                         {row.papel === "Pergunta" && row.categoria === "Ordinal" && row.ordemCategorias !== undefined && (
                           <label className="mt-2 grid gap-1 text-xs text-muted">

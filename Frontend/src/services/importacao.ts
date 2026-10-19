@@ -10,6 +10,7 @@ export type ColunaImportada = {
   papel: "pergunta" | "metadado" | "nao_selecionada";
   tipoVariavel: "quantitativa_discreta" | "quantitativa_continua" | "qualitativa_nominal" | "qualitativa_ordinal" | null;
   categorias: string[];
+  respostasMultiplas?: boolean;
   exemplos: Array<string | null>;
 };
 
@@ -46,6 +47,7 @@ export function colunaParaLinha(coluna: ColunaImportada): PerguntaRow {
     categoria: coluna.tipoVariavel ? categorias[coluna.tipoVariavel] : null,
     ordemCategorias: coluna.categorias.join("\n"),
     exemplos: coluna.exemplos,
+    respostasMultiplas: coluna.respostasMultiplas ?? false,
   };
 }
 
@@ -71,6 +73,7 @@ export async function confirmarRevisao(revisao: RevisaoImportacao, linhas: Pergu
     return {
       id: coluna.id, papel: papeisApi[linha.papel],
       tipoVariavel: tipoDaLinha(linha),
+      respostasMultiplas: tipoDaLinha(linha) === "qualitativa_nominal" && Boolean(linha.respostasMultiplas ?? coluna.respostasMultiplas),
       categorias: (linha.ordemCategorias ?? coluna.categorias.join("\n")).split("\n").map((valor) => valor.trim()).filter(Boolean),
     };
   });

@@ -285,3 +285,37 @@ test("dashboard consulta a pesquisa informada e exportação conserva esse escop
   assert.equal((await app.inject("/api/exportacoes/dados?format=xlsx&scope=all&pesquisaId=inexistente")).statusCode, 404);
 });
 
+test("respostas múltiplas são revisáveis, preservadas e compatíveis com importações antigas", async () => {
+  const csv = 'ID,Quais aparelhos você possui?,Comentário\n001,Celular;Computador;TV;Notebook,Texto; com ponto e vírgula\n002,Notebook;TV;Notebook,Outro texto';
+  const revisao = await importarArquivo(Buffer.from(csv), "multiplas.csv");
+  const aparelhos = revisao.colunas[1]!;
+  assert.equal(aparelhos.respostasMultiplas, true);
+  assert.equal(revisao.colunas[2]!.respostasMultiplas, false);
+  const invalidas = revisao.colunas.map((c) => c.id === aparelhos.id ? { ...c, tipoVariavel: "quantitativa_discreta" as const } : c);
+  await assert.rejects(salvarRevisao(revisao.id, { colunas: invalidas }), { code: "IMPORT_MULTIPLE_TYPE_INVALID" });
+  await salvarRevisao(revisao.id, { colunas: revisao.colunas.map((c) => ({ ...c, respostasMultiplas: false })) });
+  await confirmarImportacao(revisao.id);
+  const url = "/api/pesquisas/" + revisao.id + "/dashboard";
+  assert.equal((await app.inject(url)).json().data.perguntas[0].distribuicao.length, 2);
+  // Simula a coluna de uma importação anterior à migration, sem flag configurada.
+  const antiga = await importarArquivo(Buffer.from(csv), "antiga.csv");
+  await obterBanco()("coluna").where({ id: antiga.colunas[1]!.id }).update({ respostas_multiplas: null });
+  await confirmarImportacao(antiga.id);
+  const dashboard = (await app.inject("/api/pesquisas/" + antiga.id + "/dashboard")).json().data;
+  const pergunta = dashboard.perguntas[0];
+  assert.equal(pergunta.respostasMultiplas, true);
+  assert.equal(pergunta.totalMarcacoes, 6);
+  assert.equal(pergunta.respostasValidas, 2);
+  assert.equal(pergunta.distribuicao.length, 4);
+  assert.deepEqual(pergunta.medidas.moda, ["TV", "Notebook"]);
+  assert.deepEqual(pergunta.graficos, ["Barras"]);
+  assert.equal(dashboard.perguntas[1].respostasMultiplas, false);
+  const exportacao = await app.inject("/api/exportacoes/dados?format=xlsx&scope=all&pesquisaId=" + revisao.id);
+  assert.equal(lerExcel(exportacao.rawPayload)[1]![1], "Celular;Computador;TV;Notebook");
+
+  const nova = await importarArquivo(Buffer.from(csv), "nova.csv");
+  await confirmarImportacao(nova.id);
+  const resposta = await obterBanco()("resposta").where({ coluna_id: nova.colunas[1]!.id }).orderBy("valor_bruto").select("valor_categoria", "valor_bruto");
+  assert.ok(resposta.some((r) => r.valor_categoria === "Notebook;TV" && r.valor_bruto === "Notebook;TV;Notebook"));
+  assert.equal((await app.inject("/api/pesquisas/" + nova.id + "/dashboard")).json().data.perguntas[0].totalMarcacoes, 6);
+});

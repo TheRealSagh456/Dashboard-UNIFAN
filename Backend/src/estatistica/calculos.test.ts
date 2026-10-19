@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { analisarValores } from "./calculos.ts";
+import { analisarValores, analisarRespostasMultiplas } from "./calculos.ts";
 
 test("discreta preserva zero e calcula medidas, ausências e frequências", () => {
   const analise = analisarValores("quantitativa_discreta", [0, 1, 1, 2, 4, null]);
@@ -82,4 +82,24 @@ test("sem valores válidos não inventa medidas, percentuais ou boxplot", () => 
     assert.ok(!JSON.stringify(analise).includes("NaN"));
   }
   assert.equal(analisarValores("quantitativa_discreta", []).percentualAusentes, 0);
+});
+
+test("múltiplas escolhas usam participantes válidos, deduplicam e omitem acumulados", () => {
+  const analise = analisarRespostasMultiplas(["Celular; Notebook; Celular", "Notebook;TV", null, " ; "]);
+  assert.equal(analise.respostasValidas, 2);
+  assert.equal(analise.respostasAusentes, 2);
+  assert.equal(analise.totalMarcacoes, 4);
+  assert.deepEqual(analise.distribuicao.map((c) => [c.dados, c.fi, c.frPercentual]), [["Celular", 1, 50], ["Notebook", 2, 100], ["TV", 1, 50]]);
+  assert.deepEqual(analise.medidas.moda, ["Notebook"]);
+  assert.ok(analise.distribuicao.every((c) => c.fiAcumulada === null && c.frAcumulada === null && c.frPercentualAcumulada === null));
+  assert.deepEqual(analise.graficos, ["Barras"]);
+});
+
+test("uma pessoa pode marcar quatro alternativas e todas ficam empatadas como mais selecionadas", () => {
+  const analise = analisarRespostasMultiplas(["Celular/Smartphone;Computador;Televisão;Notebook"]);
+  assert.equal(analise.respostasValidas, 1);
+  assert.equal(analise.totalMarcacoes, 4);
+  assert.deepEqual(analise.medidas.moda, ["Celular/Smartphone", "Computador", "Televisão", "Notebook"]);
+  assert.ok(analise.distribuicao.every((c) => c.fi === 1 && c.frPercentual === 100));
+  assert.deepEqual(analisarRespostasMultiplas([null]).medidas, {});
 });

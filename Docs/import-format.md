@@ -33,7 +33,8 @@ serão ignoradas. No template atual, essa aba é `Dados`.
 - A primeira linha deve conter os cabeçalhos das colunas.
 - Cada linha seguinte deve representar uma resposta ou participante.
 - Cada pergunta deve ocupar uma única coluna.
-- Cada célula deve conter no máximo uma resposta para a pergunta correspondente.
+- Cada célula contém uma resposta; perguntas de seleção múltipla podem conter
+  alternativas separadas por ponto e vírgula dentro dessa célula.
 - Colunas como ID, data e hora, e-mail ou outro identificador poderão ser marcadas
   como metadados e não contarão no limite de 30 perguntas.
 - Respostas vazias serão registradas como ausentes.
@@ -71,15 +72,24 @@ importação.
 
 ## Respostas múltiplas
 
-O questionário inicial não prevê caixas de seleção com múltiplas alternativas. As
-perguntas qualitativas deverão gerar um único valor por participante.
+Perguntas qualitativas nominais podem aceitar várias alternativas, separadas por
+ponto e vírgula (`;`) dentro da célula. Isso é independente do delimitador do CSV:
+o leitor primeiro resolve as colunas e aspas, depois o backend separa as escolhas.
 
-Se o formulário definitivo introduzir respostas múltiplas, será necessário definir:
+O upload sugere respostas múltiplas quando o enunciado indica seleção múltipla
+(por exemplo, começa com Quais, Marque ou Selecione) e existem células com mais de
+uma alternativa. A revisão oferece um checkbox em Exemplos e opções, permitindo
+confirmar ou desativar a sugestão. Não se dividem respostas únicas por vírgula.
 
-- como o Google Forms separa as alternativas na exportação;
-- como distinguir o separador das alternativas do separador de um arquivo CSV;
-- como contar cada alternativa nas frequências;
-- como preservar o texto original da resposta.
+Cada alternativa recebe trim e conta uma vez por participante, mesmo quando
+repetida na célula. Valores originais permanecem intactos em valor_bruto e nas
+exportações. O valor tratado conserva a lista com ponto e vírgula. Ausências não
+entram na base dos percentuais. Alternativas que contêm ponto e vírgula literal
+exigem outra convenção de origem antes de usar esse tratamento.
+
+Importações anteriores à migration 003 usam detecção no dashboard para perguntas
+nominais compatíveis. Novas importações persistem a escolha explícita 0/1,
+inclusive para desativar a detecção. Não há dependência de número ou tema da pergunta.
 
 ## Arquivos de teste
 

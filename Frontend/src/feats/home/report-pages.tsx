@@ -100,10 +100,10 @@ export function ReportCoverPage({
 }
 
 function MedidasRelatorio({ pergunta }: { pergunta: PerguntaDashboard }) {
-  const medidas: Array<{ label: string; value: string; icon: LucideIcon }> = [];
+  const medidas: Array<{ label: string; value: string | string[]; icon: LucideIcon }> = [];
   if (pergunta.medidas.media) medidas.push({ label: "Média", value: pergunta.medidas.media, icon: Calculator });
   if (pergunta.medidas.mediana) medidas.push({ label: "Mediana", value: pergunta.medidas.mediana, icon: Equal });
-  if (pergunta.medidas.moda) medidas.push({ label: "Moda", value: pergunta.medidas.moda, icon: BarChart3 });
+  if (pergunta.medidas.moda) medidas.push({ label: pergunta.respostasMultiplas ? "Mais selecionadas" : "Moda", value: pergunta.medidas.moda, icon: BarChart3 });
   if (pergunta.medidas.primeiroQuartil) medidas.push({ label: "Primeiro quartil", value: pergunta.medidas.primeiroQuartil, icon: Sigma });
   if (pergunta.medidas.terceiroQuartil) medidas.push({ label: "Terceiro quartil", value: pergunta.medidas.terceiroQuartil, icon: Sigma });
 

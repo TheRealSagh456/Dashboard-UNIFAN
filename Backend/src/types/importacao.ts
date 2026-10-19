@@ -22,6 +22,7 @@ export type ConfiguracaoColuna = {
   papel: PapelColuna;
   tipoVariavel: TipoVariavel | null;
   categorias: string[];
+  respostasMultiplas?: boolean;
 };
 
 export type ColunaImportacao = ConfiguracaoColuna & {
@@ -41,6 +42,7 @@ export type ColunaBanco = {
   tipo_variavel: TipoVariavel | null;
   codigo_referencia: string | null;
   categorias_confirmadas: string | null;
+  respostas_multiplas: 0 | 1 | null;
 };
 
 export type ImportacaoBanco = {

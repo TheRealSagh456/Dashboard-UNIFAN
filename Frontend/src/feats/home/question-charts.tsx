@@ -9,7 +9,7 @@ function dadosCartesianos(pergunta: PerguntaDashboard) {
     label: item.dados,
     xValue: item.valor,
     value: item.fi,
-    detail: `${item.frPercentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% das respostas válidas`,
+    detail: `${item.frPercentual.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% ${pergunta.respostasMultiplas ? "dos participantes que responderam" : "das respostas válidas"}`,
     histogram: item.histograma && {
       lowerBound: item.histograma.limiteInferior,
       upperBound: item.histograma.limiteSuperior,
@@ -60,6 +60,7 @@ export function VisualizacaoPergunta({
   grafico: TipoGrafico;
 }) {
   if (!pergunta.respostasValidas) return <Text tone="muted" className="py-8 text-center">Não há respostas válidas para esta pergunta.</Text>;
+  if (pergunta.respostasMultiplas) grafico = "Barras";
   if (grafico === "Pizza") return <GraficoPizza pergunta={pergunta} />;
   if (grafico === "Boxplot") return <GraficoBoxplot pergunta={pergunta} />;
 

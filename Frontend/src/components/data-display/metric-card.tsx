@@ -6,7 +6,7 @@ import { Text } from '../ui/typography'
 
 type MetricCardProps = HTMLAttributes<HTMLDivElement> & {
   label: string
-  value: string
+  value: string | string[]
   change?: string
   icon?: LucideIcon
   tone?: 'brand' | 'positive' | 'warning'
@@ -39,21 +39,27 @@ export function MetricCard({
           <Icon className="size-4.5" aria-hidden="true" />
         </span>
       )}
-      <span className="min-w-0">
-        <span className="flex items-baseline gap-2">
-          <Text as="strong" variant="data" className="text-2xl">
-            {value}
-          </Text>
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-baseline gap-2">
+          {Array.isArray(value) ? (
+            <ul className="min-w-0 max-w-full space-y-1 text-sm font-semibold leading-5 [overflow-wrap:anywhere]">
+              {value.map((item, index) => <li key={index}>{item}</li>)}
+            </ul>
+          ) : (
+            <Text as="strong" variant={value.length > 22 ? "label" : "data"} className={cn('block max-w-full whitespace-normal [overflow-wrap:anywhere]', value.length > 22 ? 'text-sm leading-5' : 'text-2xl')}>
+              {value}
+            </Text>
+          )}
           {change && (
             <Text as="span" variant="caption" tone="positive" className="font-semibold">
               {change}
             </Text>
           )}
-        </span>
+        </div>
         <Text variant="caption" tone="muted" className="mt-1 truncate">
           {label}
         </Text>
-      </span>
+      </div>
     </Card>
   )
 }

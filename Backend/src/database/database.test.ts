@@ -23,13 +23,14 @@ test("aplica as migrations em ordem e não as repete", async () => {
   assert.deepEqual(await executarMigracoes(banco), [
     "001_initial.sql",
     "002_integridade-importacao.sql",
+    "003_respostas-multiplas.sql",
   ]);
   assert.deepEqual(await executarMigracoes(banco), []);
 
   const migracoes = await banco("schema_migrations")
     .select("id", "checksum")
     .orderBy("id");
-  assert.equal(migracoes.length, 2);
+  assert.equal(migracoes.length, 3);
   assert.ok(migracoes.every((migracao) => migracao.checksum));
 });
 
@@ -77,6 +78,7 @@ test("atualiza um banco legado sem perder os dados existentes", async () => {
 
     assert.deepEqual(await executarMigracoes(bancoLegado), [
       "002_integridade-importacao.sql",
+    "003_respostas-multiplas.sql",
     ]);
 
     const importacao = await bancoLegado("importacao")

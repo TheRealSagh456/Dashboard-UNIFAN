@@ -34,8 +34,9 @@ O frontend formata os valores e desenha os gráficos.
 
 ## Respostas consideradas
 
-- O total de respostas válidas de uma pergunta é a soma de suas frequências
-  absolutas.
+- Em perguntas de resposta única, o total válido é a soma das frequências
+  absolutas. Em respostas múltiplas, conta os participantes que marcaram ao menos
+  uma alternativa; total de marcações é informado separadamente.
 - Respostas ausentes não participam das frequências relativas nem das medidas
   estatísticas.
 - A quantidade de ausências deve ser exibida separadamente.
@@ -69,6 +70,26 @@ máximo, sem arredondar os limites utilizados no cálculo. Cada intervalo inclui
 o limite inferior e exclui o superior; a última classe também inclui o máximo.
 Uma amostra constante usa uma classe de amplitude 1, centrada no valor.
 O boxplot usa mínimo, Q1, mediana, Q3 e máximo, sem remover outliers.
+
+## Perguntas de respostas múltiplas
+
+Cada alternativa é contada no máximo uma vez por participante. O percentual
+principal usa participantes que responderam à pergunta como denominador, excluindo
+ausências. Uma pessoa pode marcar várias alternativas; a soma dos percentuais
+pode ultrapassar 100%. O total de marcações não é o total de participantes.
+
+Essas perguntas usam gráfico de barras e tabela com alternativa, participantes e
+percentual de participantes. Não usam pizza, pois os grupos se sobrepõem, nem
+frequências acumuladas. Os acumulados da API são null. A medida apresentada é
+Mais selecionadas: todas as alternativas com maior frequência, inclusive quando
+há empate entre todas. Não se aplica a convenção de amodalidade das respostas
+únicas a esse indicador. Média, mediana e quartis não são calculados.
+
+A base por participantes é uma escolha entre as bases usuais de respostas
+múltiplas descritas na documentação do
+[IBM SPSS](https://www.ibm.com/docs/en/spss-statistics/32.0.0?topic=analysis-multiple-response-frequencies).
+O sistema usa a base por participantes para responder quantas pessoas escolheram
+cada opção, mantendo contagens e exportações brutas.
 
 ## Visualizações permitidas
 

@@ -1,5 +1,6 @@
 import { obterBanco } from "../database/conexao.ts";
-import { analisarValores } from "../estatistica/calculos.ts";
+import { analisarRespostasMultiplas, analisarValores } from "../estatistica/calculos.ts";
+import { sugerirRespostasMultiplas } from "../importacao/respostas-multiplas.ts";
 import { buscarImportacao } from "./importacao.service.ts";
 import { buscarPesquisaAtual } from "./pesquisas.service.ts";
 import type { ColunaBanco, TipoVariavel } from "../types/importacao.ts";
@@ -26,12 +27,21 @@ export async function obterDashboard(pesquisaId: string) {
     valores.push(resposta.valor_numerico ?? resposta.valor_categoria ?? null);
     porColuna.set(resposta.coluna_id, valores);
   }
-  const perguntas: AnalisePergunta[] = colunas.map((coluna, i) => ({
-    id: coluna.id, codigo: coluna.codigo_referencia ?? `Q${String(i + 1).padStart(2, "0")}`,
-    enunciado: coluna.cabecalho_original.trim() || `Coluna ${coluna.posicao_original + 1}`,
-    tipoVariavel: coluna.tipo_variavel as TipoVariavel,
-    ...analisarValores(coluna.tipo_variavel!, porColuna.get(coluna.id) ?? [], JSON.parse(coluna.categorias_confirmadas ?? "[]")),
-  }));
+  const perguntas: AnalisePergunta[] = colunas.map((coluna, i) => {
+    const valores = porColuna.get(coluna.id) ?? [];
+    const multiplas = coluna.tipo_variavel === "qualitativa_nominal" && (
+      coluna.respostas_multiplas === null
+        ? sugerirRespostasMultiplas(coluna.cabecalho_original, valores as Array<string | null>)
+        : coluna.respostas_multiplas === 1
+    );
+    return {
+      id: coluna.id, codigo: coluna.codigo_referencia ?? `Q${String(i + 1).padStart(2, "0")}`,
+      enunciado: coluna.cabecalho_original.trim() || `Coluna ${coluna.posicao_original + 1}`,
+      tipoVariavel: coluna.tipo_variavel as TipoVariavel,
+      ...(multiplas ? analisarRespostasMultiplas(valores as Array<string | null>)
+        : analisarValores(coluna.tipo_variavel!, valores, JSON.parse(coluna.categorias_confirmadas ?? "[]"))),
+    };
+  });
   const totalRespostas = Number(participantes?.total ?? 0);
   const totalAusencias = perguntas.reduce((total, pergunta) => total + pergunta.respostasAusentes, 0);
   const categorias: CategoriaPergunta[] = ["Discreta", "Contínua", "Nominal", "Ordinal"];

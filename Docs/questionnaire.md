@@ -62,11 +62,14 @@ nos cálculos estatísticos.
 
 ## Regras para o Google Forms
 
-- Cada pergunta deverá gerar apenas uma coluna e um valor por participante.
+- Cada pergunta gera uma coluna por participante. Na seleção múltipla, a célula
+  pode conter alternativas separadas por ponto e vírgula, conforme import-format.md.
 - Perguntas quantitativas deverão usar resposta curta com validação numérica.
 - Contagens e idades em anos completos deverão aceitar apenas números inteiros.
 - Horas e valores monetários poderão aceitar números decimais.
-- Perguntas nominais e ordinais deverão usar opções de resposta única.
+- Perguntas ordinais usam resposta única. Nominais podem usar resposta única ou
+  seleção múltipla, confirmada na revisão da importação. Os códigos deste template
+  não fixam a posição das perguntas do formulário real.
 - A ordem das categorias ordinais deverá ser mantida exatamente como documentada.
 - A opção "Outro" deverá ser revisada depois da primeira exportação para
   confirmar como o texto livre aparece na planilha.

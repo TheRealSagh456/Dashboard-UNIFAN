@@ -4,7 +4,7 @@ export type TipoGrafico = "Barras" | "Boxplot" | "Colunas" | "Histograma" | "Piz
 export type MedidasPergunta = {
   media?: string;
   mediana?: string;
-  moda?: string;
+  moda?: string | string[];
   primeiroQuartil?: string;
   terceiroQuartil?: string;
 };
@@ -25,11 +25,11 @@ export type ClasseFrequencia = {
   dados: string;
   valor?: number;
   fi: number;
-  fiAcumulada: number;
+  fiAcumulada: number | null;
   fr: number;
-  frAcumulada: number;
+  frAcumulada: number | null;
   frPercentual: number;
-  frPercentualAcumulada: number;
+  frPercentualAcumulada: number | null;
   histograma?: ClasseHistograma;
 };
 export type PerguntaDashboard = {
@@ -43,6 +43,8 @@ export type PerguntaDashboard = {
   respostasValidas: number;
   respostasAusentes: number;
   percentualAusentes: number;
+  respostasMultiplas?: boolean;
+  totalMarcacoes?: number;
   distribuicao: ClasseFrequencia[];
   medidas: MedidasPergunta;
   graficos: TipoGrafico[];

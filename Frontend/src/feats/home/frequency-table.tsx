@@ -77,6 +77,7 @@ export function TabelaFrequencias({
 }: {
   pergunta: PerguntaDashboard;
 }) {
+  if (pergunta.respostasMultiplas) return <TabelaMultiplas pergunta={pergunta} />;
   const linhas = pergunta.distribuicao;
   const ultimaClasse = linhas.at(-1);
   const total = pergunta.respostasValidas;
@@ -147,19 +148,19 @@ export function TabelaFrequencias({
                   {formatadorInteiro.format(linha.fi)}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
-                  {formatadorInteiro.format(linha.fiAcumulada)}
+                  {formatadorInteiro.format(linha.fiAcumulada ?? 0)}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
                   {formatadorDecimal.format(linha.fr)}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
-                  {formatadorDecimal.format(linha.frAcumulada)}
+                  {formatadorDecimal.format(linha.frAcumulada ?? 0)}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
                   {formatadorPercentual.format(linha.frPercentual)}%
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
-                  {formatadorPercentual.format(linha.frPercentualAcumulada)}%
+                  {formatadorPercentual.format(linha.frPercentualAcumulada ?? 0)}%
                 </td>
               </tr>
             ))}
@@ -203,7 +204,7 @@ export function TabelaFrequencias({
               />
               <CampoFrequencia
                 label="fi (acu)"
-                value={formatadorInteiro.format(linha.fiAcumulada)}
+                value={formatadorInteiro.format(linha.fiAcumulada ?? 0)}
               />
               <CampoFrequencia
                 label="fr"
@@ -211,7 +212,7 @@ export function TabelaFrequencias({
               />
               <CampoFrequencia
                 label="fr (acu)"
-                value={formatadorDecimal.format(linha.frAcumulada)}
+                value={formatadorDecimal.format(linha.frAcumulada ?? 0)}
               />
               <CampoFrequencia
                 label="fr%"
@@ -219,7 +220,7 @@ export function TabelaFrequencias({
               />
               <CampoFrequencia
                 label="fr% (acu)"
-                value={`${formatadorPercentual.format(linha.frPercentualAcumulada)}%`}
+                value={`${formatadorPercentual.format(linha.frPercentualAcumulada ?? 0)}%`}
               />
             </div>
           </section>
@@ -243,5 +244,50 @@ function BadgeClasse({ classe }: { classe: number }) {
     <span className="rounded-full border border-brand-200 bg-brand-100 px-2.5 py-1 text-xs font-bold text-brand-800">
       Classe {classe}
     </span>
+  );
+}
+
+function TabelaMultiplas({ pergunta }: { pergunta: PerguntaDashboard }) {
+  return (
+    <Card padding="none" className="overflow-hidden">
+      <div className="border-b border-line px-5 py-5 sm:px-6">
+        <Text as="h2" variant="h3">Frequências das alternativas</Text>
+        <Text variant="caption" tone="muted" className="mt-1">
+          {pergunta.respostasValidas} participantes responderam · {pergunta.totalMarcacoes} marcações
+        </Text>
+      </div>
+      <DataTableSurface embedded>
+        <table className="w-full border-collapse text-left text-sm">
+          <caption className="sr-only">Respostas múltiplas de {pergunta.codigo}</caption>
+          <thead className="bg-surface text-xs text-muted">
+            <tr>
+              <th scope="col" className="px-4 py-3">Alternativa</th>
+              <th scope="col" className="px-4 py-3 text-right">Participantes</th>
+              <th scope="col" className="px-4 py-3 text-right">% dos participantes</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pergunta.distribuicao.map((linha) => (
+              <tr key={linha.classe} className="border-t border-line">
+                <th scope="row" className="px-4 py-3 font-medium break-words">{linha.dados}</th>
+                <td className="px-4 py-3 text-right tabular-nums">{formatadorInteiro.format(linha.fi)}</td>
+                <td className="px-4 py-3 text-right tabular-nums">{formatadorPercentual.format(linha.frPercentual)}%</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t border-line bg-surface font-semibold">
+            <tr>
+              <th scope="row" className="px-4 py-3">Total de marcações</th>
+              <td className="px-4 py-3 text-right">{pergunta.totalMarcacoes}</td>
+              <td className="px-4 py-3 text-right">—</td>
+            </tr>
+          </tfoot>
+        </table>
+      </DataTableSurface>
+      <Text variant="caption" tone="muted" className="border-t border-line px-5 py-3">
+        Cada alternativa conta uma vez por participante. Como uma pessoa pode marcar várias opções,
+        os percentuais podem somar mais de 100%. Não se aplicam frequências acumuladas.
+      </Text>
+    </Card>
   );
 }

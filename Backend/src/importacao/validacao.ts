@@ -28,6 +28,9 @@ export function validarConfiguracao(colunas: ConfiguracaoColuna[]) {
     throw new ErroAplicacao("Selecione de 1 a 30 perguntas.", "IMPORT_QUESTION_LIMIT");
   }
   for (const coluna of perguntas) {
+    if (coluna.respostasMultiplas && coluna.tipoVariavel !== "qualitativa_nominal") {
+      throw new ErroAplicacao("Respostas múltiplas exigem uma pergunta qualitativa nominal.", "IMPORT_MULTIPLE_TYPE_INVALID");
+    }
     if (!coluna.tipoVariavel) {
       throw new ErroAplicacao("Confirme o tipo de todas as perguntas.", "IMPORT_TYPE_REQUIRED");
     }

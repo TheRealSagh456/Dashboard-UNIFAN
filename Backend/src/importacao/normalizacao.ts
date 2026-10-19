@@ -1,4 +1,5 @@
 import type { CelulaBruta, TipoVariavel } from "../types/importacao.ts";
+import { separarAlternativas } from "./respostas-multiplas.ts";
 
 export function estaVazia(valor: CelulaBruta | undefined): boolean {
   return valor == null || (typeof valor === "string" && valor.trim() === "");
@@ -24,6 +25,7 @@ export function normalizarResposta(
   tipo: TipoVariavel,
   decimal: "," | ".",
   categorias: string[],
+  respostasMultiplas = false,
 ) {
   const vazio = { valor_numerico: null, valor_categoria: null };
   if (estaVazia(bruto)) return { ...vazio, problema: null };
@@ -38,5 +40,6 @@ export function normalizarResposta(
   if (tipo === "qualitativa_ordinal" && !categorias.includes(texto)) {
     return { ...vazio, problema: "Resposta ausente da lista de categorias ordinais confirmadas." };
   }
-  return { valor_numerico: null, valor_categoria: texto, problema: null };
+  const categoria = respostasMultiplas ? separarAlternativas(texto).join(";") : texto;
+  return { valor_numerico: null, valor_categoria: categoria || null, problema: null };
 }

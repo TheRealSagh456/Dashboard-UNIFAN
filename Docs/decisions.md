@@ -27,8 +27,8 @@ realizada e suas consequências.
 
 ## DEC-003 - Respostas únicas no questionário inicial
 
-- **Situação:** aceita com base no template
-- **Decisão:** considerar que cada pergunta do questionário inicial produz um
+- **Situação:** ampliada pela DEC-023 para o formulário real
+- **Decisão inicial:** considerar que cada pergunta do questionário inicial produz um
   único valor por participante.
 - **Motivo:** as 25 perguntas do template possuem respostas escalares e não há
   questão modelada como caixa de seleção com múltiplas alternativas.
@@ -354,6 +354,25 @@ realizada e suas consequências.
   cresce com a série. Pizza e rosca tratam bases vazias e cores adicionais.
   Há testes de regressão em Frontend/tests/charts.test.mjs, executados por npm test.
   Não houve mudança de schema nem dependências novas.
+
+## DEC-023 - Respostas múltiplas e cards de medidas textuais
+
+- **Situação:** aceita; critério estatístico delegado pelo solicitante
+- **Decisão:** perguntas qualitativas nominais podem conter alternativas separadas
+  por ponto e vírgula. Contar uma vez cada alternativa por participante e usar
+  participantes com alguma resposta como base dos percentuais. Exibir barras,
+  sem pizza ou acumulados, e informar o total de marcações separadamente.
+- **Motivo:** a pergunta de aparelhos no CSV real contém várias escolhas na mesma
+  célula, que antes eram exibidas como uma categoria concatenada.
+- **Consequências:** migration 003 acrescenta coluna.respostas_multiplas.
+  Null identifica importações anteriores, com detecção compatível no dashboard;
+  novas revisões persistem 0/1 e permitem corrigir a sugestão na grade. O bruto
+  continua preservado. Mais selecionadas lista todos os empates. MetricCard
+  aceita listas e quebra textos longos, inclusive no relatório. Essa decisão
+  amplia a DEC-003 sem alterar as regras de perguntas de resposta única.
+  Nenhuma biblioteca adicional foi necessária.
+- **Referência:** distinção entre base por casos e por respostas no
+  [IBM SPSS](https://www.ibm.com/docs/en/spss-statistics/32.0.0?topic=analysis-multiple-response-frequencies).
 
 ## Decisões pendentes
 

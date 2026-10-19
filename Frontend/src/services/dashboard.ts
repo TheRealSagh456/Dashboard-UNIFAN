@@ -19,6 +19,11 @@ function formatarMedidas(originais: MedidasApi): MedidasPergunta {
   const medidas: MedidasPergunta = {};
   for (const [nome, valor] of Object.entries(originais)) {
     const itens = Array.isArray(valor) ? valor : [valor];
+    if (nome === "moda") {
+      const modas = itens.map((item) => typeof item === "number" ? formatador.format(item) : String(item));
+      medidas.moda = modas.length > 1 ? modas : modas[0] ?? "Amodal";
+      continue;
+    }
     medidas[nome as keyof MedidasPergunta] = itens.length
       ? itens.map((item) => typeof item === "number" ? formatador.format(item) : item).join(" / ")
       : "Amodal";

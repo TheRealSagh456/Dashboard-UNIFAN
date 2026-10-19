@@ -1,4 +1,5 @@
 import type { TipoVariavel } from "../types/importacao.ts";
+import { separarAlternativas } from "../importacao/respostas-multiplas.ts";
 import type { CategoriaPergunta, ClasseFrequencia, Medidas, TipoGrafico, ValorEstatistico } from "../types/dashboard.ts";
 
 const categorias: Record<TipoVariavel, CategoriaPergunta> = {
@@ -112,9 +113,32 @@ export function analisarValores(tipo: TipoVariavel, respostas: Array<ValorEstati
   return {
     tipo: numerica ? "Quantitativa" as const : "Qualitativa" as const, categoria,
     totalRespostas: respostas.length, respostasValidas: valores.length,
+    respostasMultiplas: false, totalMarcacoes: valores.length,
     respostasAusentes: respostas.length - valores.length,
     percentualAusentes: respostas.length ? ((respostas.length - valores.length) / respostas.length) * 100 : 0,
     medidas, distribuicao, graficos: [...graficos[categoria]],
     graficoRecomendado: graficos[categoria][0]!, ...(boxplot ? { boxplot } : {}),
+  };
+}
+
+export function analisarRespostasMultiplas(respostas: Array<string | null>) {
+  const alternativas = respostas.map(separarAlternativas);
+  const validas = alternativas.filter((itens) => itens.length > 0).length;
+  const frequencias = contar(alternativas.flat());
+  const totalMarcacoes = alternativas.reduce((total, itens) => total + itens.length, 0);
+  const maior = Math.max(0, ...frequencias.values());
+  return {
+    tipo: "Qualitativa" as const, categoria: "Nominal" as const,
+    respostasMultiplas: true, totalMarcacoes,
+    totalRespostas: respostas.length, respostasValidas: validas,
+    respostasAusentes: respostas.length - validas,
+    percentualAusentes: respostas.length ? ((respostas.length - validas) / respostas.length) * 100 : 0,
+    medidas: validas ? { moda: [...frequencias].filter(([, fi]) => fi === maior).map(([valor]) => valor) } : {},
+    distribuicao: [...frequencias].map(([valor, fi], i) => ({
+      classe: i + 1, dados: String(valor), fi, fr: validas ? fi / validas : 0,
+      frPercentual: validas ? (fi / validas) * 100 : 0,
+      fiAcumulada: null, frAcumulada: null, frPercentualAcumulada: null,
+    })),
+    graficos: ["Barras"] as TipoGrafico[], graficoRecomendado: "Barras" as const,
   };
 }

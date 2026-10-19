@@ -54,6 +54,7 @@ espaços externos em `enunciado`, mantendo `cabecalhoOriginal` intacto.
         "papel": "pergunta",
         "tipoVariavel": "quantitativa_discreta",
         "categorias": [],
+        "respostasMultiplas": false,
         "exemplos": ["18", "19"]
       }
     ],
@@ -95,6 +96,10 @@ Tipos: `quantitativa_discreta`, `quantitativa_continua`,
 Selecionar de 1 a 30 perguntas; todas precisam de tipo. Perguntas ordinais
 precisam de categorias únicas na ordem estatística escolhida.
 `separadorDecimal` é opcional e só afeta CSV.
+`respostasMultiplas` é um booleano opcional por coluna, válido somente para
+pergunta qualitativa nominal. A revisão o devolve e o frontend envia explicitamente.
+Se omitido, mantém a configuração persistida; uma combinação incompatível retorna
+400, `IMPORT_MULTIPLE_TYPE_INVALID`.
 
 Retorna a revisão atualizada. Remove conversões e problemas anteriores para
 permitir nova confirmação. Não altera cabeçalhos nem valores brutos.
@@ -107,7 +112,9 @@ Sem corpo. Normaliza as perguntas conforme a revisão e retorna o objeto com
 a revisão existente, sem duplicar dados.
 
 Ausências viram null nos campos tratados; zero permanece válido. Textos
-categóricos recebem somente trim; Sim/Não não viram booleanos.
+categóricos de resposta única recebem somente trim; Sim/Não não viram booleanos.
+Em respostas múltiplas, cada alternativa recebe trim e repetições da mesma célula
+são removidas no valor tratado, conservando valorBruto.
 Números não aceitam unidades nem separadores de milhar e não são arredondados.
 Categorias nominais são livres; categorias ordinais devem pertencer à lista
 confirmada. Metadados mantêm seu valor bruto, sem conversão de data ou fuso.
@@ -198,6 +205,7 @@ Cada pergunta contém:
 
 - `id`, `codigo`, `enunciado`, `tipoVariavel`, `tipo`, `categoria`;
 - `totalRespostas`, `respostasValidas`, `respostasAusentes`, `percentualAusentes`;
+- `respostasMultiplas` e `totalMarcacoes`: distinguem participantes e marcações;
 - `medidas`: somente campos aplicáveis e com observações. Média e quartis são
   números; mediana é número, categoria ou par de categorias centrais ordinais;
   moda é um array com todos os valores modais, vazio quando amodal;
@@ -210,7 +218,12 @@ Cada pergunta contém:
 - `graficos` permitidos, `graficoRecomendado` e, nas numéricas válidas, `boxplot`
   com `minimo`, `primeiroQuartil`, `mediana`, `terceiroQuartil`, `maximo`.
 
-Frequências relativas ficam entre 0 e 1; campos percentuais, entre 0 e 100.
+Frequências relativas de cada alternativa ficam entre 0 e 1; campos percentuais
+de cada alternativa, entre 0 e 100. Nas respostas múltiplas, a soma dos percentuais
+pode superar 100%; a base é respostasValidas, contada por participante, e as
+alternativas repetidas na mesma célula contam uma vez. O total de escolhas está
+em totalMarcacoes. Os campos acumulados são null, graficos contém somente Barras,
+e medidas.moda contém todas as alternativas mais selecionadas.
 Sem observações válidas, `medidas` é vazio, boxplot é omitido e frequências são
 zero. Null não participa dos cálculos; zero participa. Os valores numéricos não
 são arredondados para apresentação na API. As convenções matemáticas estão em

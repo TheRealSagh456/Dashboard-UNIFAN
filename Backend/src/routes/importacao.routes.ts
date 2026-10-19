@@ -16,6 +16,7 @@ export async function importacaoRoutes(app: FastifyInstance) {
             papel: { type: "string", enum: ["pergunta", "metadado", "nao_selecionada"] },
             tipoVariavel: { anyOf: [{ type: "null" }, { type: "string", enum: ["quantitativa_discreta", "quantitativa_continua", "qualitativa_nominal", "qualitativa_ordinal"] }] },
             categorias: { type: "array", items: { type: "string" } },
+            respostasMultiplas: { type: "boolean" },
           },
         } },
       },

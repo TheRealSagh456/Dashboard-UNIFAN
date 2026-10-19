@@ -124,3 +124,41 @@ test("pizza e rosca fecham 360 graus, omitem setores zero e exibem estado vazio"
   const varias = render(PieChart, { data: Array.from({ length: 6 }, (_, i) => ({ label: "Grupo " + i, value: 1 })) });
   assert.equal(new Set([...varias.matchAll(/fill:hsl\(([^)]+)\)/g)].map((match) => match[1])).size, 6);
 });
+
+test("card de moda exibe alternativas em lista e permite quebra de palavras longas", async () => {
+  const { MetricCard } = await import("../src/components/data-display/metric-card.tsx");
+  const opcoes = ["Celular/Smartphone", "Computador", "Televisão", "Notebook"];
+  const markup = render(MetricCard, { label: "Mais selecionadas", value: opcoes });
+  assert.equal([...markup.matchAll(/<li>/g)].length, 4);
+  assert.ok(markup.includes("[overflow-wrap:anywhere]"));
+  const texto = "AlternativaComTextoMuitoLongoSemEspacosParaConferirQuebra";
+  const simples = render(MetricCard, { label: "Moda", value: texto });
+  assert.ok(simples.includes("whitespace-normal") && simples.includes(texto));
+});
+
+test("API mantém as modas separadas e tabela múltipla omite acumulados e pizza", async () => {
+  const { carregarDashboard } = await import("../src/services/dashboard.ts");
+  const { TabelaFrequencias } = await import("../src/feats/home/frequency-table.tsx");
+  const { VisualizacaoPergunta } = await import("../src/feats/home/question-charts.tsx");
+  const alternativas = ["Celular/Smartphone", "Computador", "Televisão", "Notebook"];
+  const api = {
+    id: "aparelhos", codigo: "Q19", enunciado: "Quais aparelhos possui?",
+    tipo: "Qualitativa", categoria: "Nominal", respostasMultiplas: true,
+    totalRespostas: 1, respostasValidas: 1, respostasAusentes: 0, percentualAusentes: 0, totalMarcacoes: 4,
+    medidas: { moda: alternativas }, graficos: ["Barras"], graficoRecomendado: "Barras",
+    distribuicao: alternativas.map((dados, i) => ({ classe: i + 1, dados, fi: 1, fr: 1, frPercentual: 100, fiAcumulada: null, frAcumulada: null, frPercentualAcumulada: null })),
+  };
+  const anterior = globalThis.fetch;
+  try {
+    globalThis.fetch = async () => Response.json({ data: { pesquisa: { id: "teste" }, perguntas: [api] } });
+    const dashboard = await carregarDashboard("teste");
+    const pergunta = dashboard.perguntas[0];
+    assert.deepEqual(pergunta.medidas.moda, alternativas);
+    const tabela = render(TabelaFrequencias, { pergunta });
+    assert.ok(tabela.includes("% dos participantes") && tabela.includes("4 marcações"));
+    assert.ok(!tabela.includes("fi (acu)"));
+    const grafico = render(VisualizacaoPergunta, { pergunta, grafico: "Pizza" });
+    assert.equal([...grafico.matchAll(/data-chart-item=/g)].length, 4);
+    assert.ok(!grafico.includes("<mask"));
+  } finally { globalThis.fetch = anterior; }
+});

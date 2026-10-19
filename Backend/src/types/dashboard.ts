@@ -15,11 +15,11 @@ export type ClasseFrequencia = {
   dados: string;
   valor?: number;
   fi: number;
-  fiAcumulada: number;
+  fiAcumulada: number | null;
   fr: number;
-  frAcumulada: number;
+  frAcumulada: number | null;
   frPercentual: number;
-  frPercentualAcumulada: number;
+  frPercentualAcumulada: number | null;
   histograma?: { limiteInferior: number; limiteSuperior: number; densidade: number };
 };
 export type ResumoBoxplot = {
@@ -40,6 +40,8 @@ export type AnalisePergunta = {
   respostasValidas: number;
   respostasAusentes: number;
   percentualAusentes: number;
+  respostasMultiplas: boolean;
+  totalMarcacoes: number;
   medidas: Medidas;
   distribuicao: ClasseFrequencia[];
   graficos: TipoGrafico[];

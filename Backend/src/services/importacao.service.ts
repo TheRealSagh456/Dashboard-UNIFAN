@@ -4,6 +4,7 @@ import { obterBanco } from "../database/conexao.ts";
 import { lerCsv } from "../importacao/leitores/csv.ts";
 import { lerExcel } from "../importacao/leitores/excel.ts";
 import { sugerirClassificacao } from "../importacao/classificacao.ts";
+import { sugerirRespostasMultiplas } from "../importacao/respostas-multiplas.ts";
 import { normalizarResposta, serializarBruto } from "../importacao/normalizacao.ts";
 import { LIMITE_ARQUIVO, validarConfiguracao, validarMatriz } from "../importacao/validacao.ts";
 import { ErroAplicacao } from "../utils/erro-aplicacao.ts";
@@ -36,6 +37,11 @@ export async function obterRevisao(id: string): Promise<RevisaoImportacao> {
       codigo: coluna.codigo_referencia ?? `C${coluna.posicao_original + 1}`,
       papel: coluna.papel, tipoVariavel: coluna.tipo_variavel,
       categorias: JSON.parse(coluna.categorias_confirmadas ?? "[]") as string[],
+      respostasMultiplas: coluna.papel === "pergunta" && coluna.tipo_variavel === "qualitativa_nominal" && (
+        coluna.respostas_multiplas === null
+          ? sugerirRespostasMultiplas(coluna.cabecalho_original, exemplos.filter((r) => r.coluna_id === coluna.id).map((r) => r.valor_bruto))
+          : coluna.respostas_multiplas === 1
+      ),
       exemplos: exemplos.filter((r) => r.coluna_id === coluna.id).map((r) => r.valor_bruto as string | null),
     })), problemas,
   };
@@ -68,11 +74,14 @@ export async function importarArquivo(buffer: Buffer, nomeArquivo: string, delim
   const colunas = cabecalhos.map((cabecalho, posicao) => {
     const original = serializarBruto(cabecalho) ?? "";
     const sugestao = sugerirClassificacao(original, registros.map(({ valores }) => serializarBruto(valores[posicao])), decimal);
+    const multiplas = sugestao.papel === "pergunta" && sugestao.tipoVariavel === "qualitativa_nominal"
+      && sugerirRespostasMultiplas(original, registros.map(({ valores }) => serializarBruto(valores[posicao])));
     const codigo = sugestao.papel === "pergunta" ? `Q${String(++numeroPergunta).padStart(2, "0")}` : null;
     return {
       id: randomUUID(), importacao_id: id, posicao_original: posicao,
       cabecalho_original: original, papel: sugestao.papel, tipo_variavel: sugestao.tipoVariavel,
       codigo_referencia: codigo, categorias_confirmadas: JSON.stringify(sugestao.categorias),
+      respostas_multiplas: Number(multiplas),
     };
   });
   const banco = obterBanco();
@@ -109,6 +118,9 @@ export async function salvarRevisao(id: string, configuracao: { colunas: Configu
       await trx("coluna").where({ id: coluna.id, importacao_id: id }).update({
         papel: coluna.papel, tipo_variavel: coluna.papel === "pergunta" ? coluna.tipoVariavel : null,
         categorias_confirmadas: JSON.stringify(coluna.categorias),
+        respostas_multiplas: coluna.papel !== "pergunta" || coluna.tipoVariavel !== "qualitativa_nominal" ? 0
+          : coluna.respostasMultiplas === undefined ? existentes.find((item) => item.id === coluna.id)!.respostas_multiplas
+          : Number(coluna.respostasMultiplas),
       });
     }
     if (importacao.formato === "csv" && configuracao.separadorDecimal) {
@@ -128,6 +140,7 @@ export async function confirmarImportacao(id: string) {
     validarConfiguracao(colunas.map((coluna) => ({
       id: coluna.id, papel: coluna.papel, tipoVariavel: coluna.tipo_variavel,
       categorias: JSON.parse(coluna.categorias_confirmadas ?? "[]") as string[],
+      respostasMultiplas: coluna.respostas_multiplas === 1,
     })));
     await trx("problema_importacao").where({ importacao_id: id }).delete();
     let problemas = 0;
@@ -137,7 +150,7 @@ export async function confirmarImportacao(id: string) {
         .where("r.coluna_id", coluna.id).select("r.id", "r.participante_id", "r.coluna_id", "r.valor_bruto", "p.indice_linha");
       const convertidas = [];
       for (const resposta of respostas) {
-        const { problema, ...valores } = normalizarResposta(resposta.valor_bruto, coluna.tipo_variavel!, importacao.separador_decimal ?? ".", categorias);
+        const { problema, ...valores } = normalizarResposta(resposta.valor_bruto, coluna.tipo_variavel!, importacao.separador_decimal ?? ".", categorias, coluna.respostas_multiplas === 1);
         convertidas.push({
           id: resposta.id, participante_id: resposta.participante_id,
           coluna_id: coluna.id, valor_bruto: resposta.valor_bruto, ...valores,

@@ -100,6 +100,17 @@ visível, e reunidas no mesmo PDF. Os formatos de dados chamam
 colunas e a geração do arquivo permanecem no backend. A chamada envia pesquisaId
 para preservar o mesmo escopo da tela, sem atraso artificial.
 
+## Medidas textuais e seleção múltipla
+
+MetricCard apresenta modas empatadas como lista, com quebra de palavras e altura
+flexível. Textos longos usam tipografia de leitura em vez de tamanho numérico.
+As mesmas regras valem para o relatório PDF.
+
+A grade de importação oferece Respostas múltiplas em Exemplos e opções das
+perguntas nominais. O dashboard dessas perguntas exibe barras e uma tabela com
+percentual por participante, total de marcações e explicação da soma acima de
+100%. Não oferece pizza ou acumulados. O indicador recebe o nome Mais selecionadas.
+
 ## Gráficos com dados importados
 
 - A escala aceita densidades menores que 1 e mantém ticks inteiros em contagens.
