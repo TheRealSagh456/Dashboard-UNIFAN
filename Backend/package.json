@@ -4,12 +4,13 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "up": "npm install && npm --prefix ../Frontend install",
     "dev": "node --watch src/server.ts",
     "build": "tsc --noEmit",
     "start": "node src/server.ts",
     "typecheck": "tsc --noEmit",
     "setup": "node setup.js",
-    "test": "node --test --test-isolation=none src/database/database.test.ts src/importacao/importacao.test.ts src/estatistica/calculos.test.ts"
+    "test": "node --test --test-isolation=none src/database/database.test.ts src/importacao/importacao.test.ts src/estatistica/calculos.test.ts src/frontend.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "@fastify/multipart": "^10.1.4",
+    "@fastify/static": "10.1.6",
     "@types/node": "^26.4.0",
     "better-sqlite3": "^12.6.2",
     "csv-parse": "7.0.2",

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: dashboard-unifan
+    runtime: node
+    plan: free
+    buildCommand: npm --prefix Backend ci && npm --prefix Frontend ci --include=dev && npm --prefix Frontend run build
+    startCommand: npm --prefix Backend start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production

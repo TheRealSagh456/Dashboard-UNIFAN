@@ -374,6 +374,21 @@ realizada e suas consequências.
 - **Referência:** distinção entre base por casos e por respostas no
   [IBM SPSS](https://www.ibm.com/docs/en/spss-statistics/32.0.0?topic=analysis-multiple-response-frequencies).
 
+## DEC-024 - Apresentação online no Render gratuito
+
+- **Situação:** aceita com perda de persistência confirmada pelo solicitante
+- **Decisão:** preparar um único Web Service Free com Node 24, frontend Vite
+  compilado servido pelo Fastify em produção e SQLite no armazenamento temporário.
+  Usar `@fastify/static` e declarar o serviço em `render.yaml`, sem disco ou banco pago.
+- **Motivo:** apresentar pelo navegador sem depender do Node instalado na faculdade.
+- **Consequências:** a pesquisa pode precisar ser reimportada após suspensão,
+  reinício ou deploy. O desenvolvimento continua separado em Vite e API. A API
+  mantém seus erros JSON, sem fallback HTML, e páginas React aceitam acesso direto.
+  A aplicação pública continua com dados compartilhados e sem autenticação; usar
+  apenas dados fictícios ou anonimizados. Publicação e conexão da conta GitHub
+  dependem de ação posterior do responsável; preparar os arquivos não faz deploy.
+  O roteiro e as limitações estão em `Docs/deploy-render.md`.
+
 ## Decisões pendentes
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |

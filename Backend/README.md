@@ -78,6 +78,12 @@ checksums: editar uma migration já aplicada impede a inicialização.
 
 ## Conferir o servidor
 
+Para publicar frontend e API juntos no **Render Free**, siga o
+[roteiro de publicação](../Docs/deploy-render.md). O `render.yaml` da raiz
+configura Node 24 e o plano gratuito sem disco persistente. Com
+`NODE_ENV=production`, o backend exige o build em `Frontend/dist`; nos demais
+ambientes ele continua expondo somente a API.
+
 Com o servidor aberto, em outro terminal PowerShell:
 
 ```powershell

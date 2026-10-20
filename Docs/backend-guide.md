@@ -141,6 +141,13 @@ total. A API é testada com temas diferentes e exportação de uma pesquisa ante
 
 ## Próximas etapas
 
+A publicação de apresentação no Render Free está preparada em `render.yaml`.
+Em produção, o Fastify serve o frontend compilado no mesmo endereço da API.
+O SQLite é temporário e os dados podem precisar de reimportação após reinícios.
+Siga [o roteiro de publicação](./deploy-render.md); o desenvolvimento local
+continua usando Vite e API separados. Os testes de frontend servido pelo backend
+estão em `Backend/src/frontend.test.ts`.
+
 - Avaliar o CSV definitivo para ajustar as sugestões quando necessário,
   preservando a revisão explícita dos tipos e das ordens.
 - A busca por link do Google Sheets continua pendente; uploads locais funcionam.

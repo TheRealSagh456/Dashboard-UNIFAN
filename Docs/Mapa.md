@@ -20,6 +20,7 @@ atualizados sempre que uma decisão relevante for tomada.
 | [design-system.md](./design-system.md)   | Tokens visuais, componentes reutilizáveis e catálogo do frontend.            | Ativo         |
 | [api.md](./api.md)                       | Contratos entre frontend e backend.                                          | Em elaboração |
 | [backend-guide.md](./backend-guide.md)   | Importação, SQLite, cálculos, integração do dashboard e validações.       | Ativo         |
+| [deploy-render.md](./deploy-render.md)   | Publicação gratuita de frontend e API no Render, com SQLite temporário. | Ativo         |
 | `testing.md`                             | Estratégia e casos de teste.                                                 | Pendente      |
 | `team-guide.md`                          | Guia de colaboração para os integrantes.                                     | Pendente      |
 | `STATUS.md`                              | Estado atual das entregas e próximos passos.                                 | Pendente      |
