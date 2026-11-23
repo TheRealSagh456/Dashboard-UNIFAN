@@ -71,6 +71,13 @@ As classes têm a mesma amplitude entre o mínimo e o máximo, com ajuste quando
 a precisão numérica produz limites coincidentes. O cálculo usa os limites sem
 o arredondamento de exibição. Cada intervalo inclui o
 limite inferior e exclui o superior. A última classe também inclui o máximo.
+Na exibição, os limites dos intervalos têm no máximo duas casas decimais,
+com vírgula decimal e sem zeros adicionais em inteiros. O frontend aplica essa
+formatação aos rótulos das classes contínuas e das classes agrupadas discretas,
+usados nas tabelas, gráficos, tooltips e relatório, e às marcas dos limites no
+eixo do histograma. Os limites numéricos,
+pontos médios, densidades, frequências e cálculos mantêm a precisão da API.
+Limites muito próximos podem ter o mesmo texto após o arredondamento de exibição.
 Uma amostra constante usa uma classe centrada no valor, com amplitude 1 quando
 os dois limites são representáveis nessa distância.
 O boxplot usa mínimo, Q1, mediana, Q3 e máximo, sem remover outliers.

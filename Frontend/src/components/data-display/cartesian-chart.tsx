@@ -2,7 +2,7 @@ import { useState, type FocusEvent, type KeyboardEvent, type MouseEvent } from "
 import { useChartInteraction } from "../../hooks/use-chart-interaction";
 import { cn } from "../../lib/cn";
 import { criarEscalaAgradavel, criarEscalaIntervalo } from "../../utils/chart-scale";
-import { formatarValorDoEixo, quebrarRotulo } from "../../utils/chart-layout";
+import { formatarLimiteDeClasse, formatarValorDoEixo, quebrarRotulo } from "../../utils/chart-layout";
 import { Tooltip, type TooltipTriggerProps } from "../ui/tooltip";
 
 export type CartesianChartDatum = {
@@ -119,7 +119,7 @@ export function CartesianChart({
   const upperBound = histogramData?.[histogramData.length - 1].histogram.upperBound ?? 1;
   const boundaries = histogramData ? [lowerBound, ...histogramData.map((item) => item.histogram.upperBound)] : [];
   const boundaryLabelStep = Math.max(1, Math.ceil(
-    (boundaries.reduce((maior, valor) => Math.max(maior, formatarValorDoEixo(valor).length), 0) * 6 + 12)
+    (boundaries.reduce((maior, valor) => Math.max(maior, formatarLimiteDeClasse(valor).length), 0) * 6 + 12)
       / (chartWidth / Math.max(1, boundaries.length - 1)),
   ));
   const intervalPosition = (value: number) =>
@@ -255,7 +255,7 @@ export function CartesianChart({
           points.map((point, index) => {
             const selected = selectedIndex === index;
             return (
-              <Tooltip<SVGPathElement> key={point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
+              <Tooltip<SVGPathElement> key={point.item.histogram?.lowerBound ?? point.item.label} pinned={selected} content={<TooltipContent item={point.item} />}>
                 {(triggerProps) => (
                   <path
                     {...triggerProps}
@@ -285,7 +285,7 @@ export function CartesianChart({
           <g key={boundary}>
             <line x1={intervalPosition(boundary)} x2={intervalPosition(boundary)} y1={baseline} y2={baseline + 5} className="stroke-ink stroke-1" />
             {(index === boundaries.length - 1 || (index % boundaryLabelStep === 0 && index < boundaries.length - 1 - boundaryLabelStep / 2)) && <text x={intervalPosition(boundary)} y={baseline + 20} textAnchor="middle" className="fill-muted text-[10px]">
-              {formatarValorDoEixo(boundary)}
+              {formatarLimiteDeClasse(boundary)}
             </text>}
           </g>
         ))}

@@ -1,5 +1,10 @@
 const formatador = new Intl.NumberFormat("pt-BR", { maximumSignificantDigits: 5 });
 const cientifico = new Intl.NumberFormat("pt-BR", { notation: "scientific", maximumFractionDigits: 3 });
+const formatadorLimiteDeClasse = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 });
+
+export function formatarLimiteDeClasse(valor: number) {
+  return formatadorLimiteDeClasse.format(valor);
+}
 
 export function formatarValorDoEixo(valor: number) {
   const absoluto = Math.abs(valor);

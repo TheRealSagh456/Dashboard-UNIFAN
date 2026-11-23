@@ -1,5 +1,6 @@
 import { apiRequest } from "./api";
-import type { Dashboard, MedidasPergunta, PerguntaDashboard } from "../feats/home/dashboard-data";
+import type { ClasseFrequencia, Dashboard, MedidasPergunta, PerguntaDashboard } from "../feats/home/dashboard-data";
+import { formatarLimiteDeClasse } from "../utils/chart-layout";
 
 type MedidasApi = {
   media?: number;
@@ -13,6 +14,16 @@ type DashboardApi = {
   perguntas: Array<Omit<PerguntaDashboard, "medidas"> & { medidas: MedidasApi }>;
 };
 const formatador = new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 4 });
+
+function formatarClasse(classe: ClasseFrequencia): ClasseFrequencia {
+  if (!classe.histograma) return classe;
+  const { limiteInferior, limiteSuperior } = classe.histograma;
+  const separador = classe.dados.includes("|-|") ? "|-|" : "|-";
+  return {
+    ...classe,
+    dados: `${formatarLimiteDeClasse(limiteInferior)} ${separador} ${formatarLimiteDeClasse(limiteSuperior)}`,
+  };
+}
 
 // A API calcula as medidas. Aqui somente os números recebem formato de exibição.
 function formatarMedidas(originais: MedidasApi): MedidasPergunta {
@@ -35,6 +46,13 @@ export async function carregarDashboard(pesquisaId = "atual"): Promise<Dashboard
   const { data } = await apiRequest<DashboardApi>(`/api/pesquisas/${encodeURIComponent(pesquisaId)}/dashboard`);
   return {
     pesquisa: data.pesquisa,
-    perguntas: data.perguntas.map((pergunta) => ({ ...pergunta, medidas: formatarMedidas(pergunta.medidas) })),
+    perguntas: data.perguntas.map((pergunta) => ({
+      ...pergunta,
+      distribuicao: pergunta.distribuicao.map(formatarClasse),
+      ...(pergunta.distribuicaoAgrupada && {
+        distribuicaoAgrupada: pergunta.distribuicaoAgrupada.map(formatarClasse),
+      }),
+      medidas: formatarMedidas(pergunta.medidas),
+    })),
   };
 }
