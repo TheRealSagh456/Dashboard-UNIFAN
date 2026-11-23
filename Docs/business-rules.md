@@ -65,10 +65,14 @@ Categorias ordinais seguem a ordem confirmada na revisão. Para n par com duas
 categorias centrais diferentes, a mediana devolve ambas, sem inventar uma média
 entre rótulos. Categorias confirmadas sem observações aparecem com frequência zero.
 
-Histogramas usam `ceil(1 + log2(n))` classes de mesma amplitude entre mínimo e
-máximo, sem arredondar os limites utilizados no cálculo. Cada intervalo inclui
-o limite inferior e exclui o superior; a última classe também inclui o máximo.
-Uma amostra constante usa uma classe de amplitude 1, centrada no valor.
+As tabelas quantitativas e os histogramas usam a regra de Sturges, cuja contagem
+sugerida é `ceil(1 + log2(n))`, com `n` igual ao número de respostas válidas.
+As classes têm a mesma amplitude entre o mínimo e o máximo, com ajuste quando
+a precisão numérica produz limites coincidentes. O cálculo usa os limites sem
+o arredondamento de exibição. Cada intervalo inclui o
+limite inferior e exclui o superior. A última classe também inclui o máximo.
+Uma amostra constante usa uma classe centrada no valor, com amplitude 1 quando
+os dois limites são representáveis nessa distância.
 O boxplot usa mínimo, Q1, mediana, Q3 e máximo, sem remover outliers.
 
 ## Perguntas de respostas múltiplas
@@ -170,12 +174,17 @@ animações são apenas de entrada e também respeitam movimento reduzido.
 
 ## Distribuição de frequências
 
-A seção de distribuição usa as seguintes colunas:
+Nas perguntas quantitativas, a primeira coluna é `Intervalo de classe`, seguida
+de `Classe`. O intervalo `5 |- 10` inclui 5 e exclui 10. Na última classe,
+`26 |-| 30` inclui 26 e 30. Os gráficos discretos usam a frequência por valor.
+Em perguntas qualitativas de resposta única, as duas primeiras colunas são
+`Classe` e `Dados`. As colunas de frequência seguem a mesma ordem nos dois casos.
 
 | Coluna | Definição |
 | :--- | :--- |
 | Classe | Número sequencial de `1` até a última faixa ou categoria |
-| Dados (intervalo de classe) | Valor, categoria ou intervalo representado pela classe |
+| Dados | Categoria representada pela classe qualitativa |
+| Intervalo de classe | Limites da classe quantitativa |
 | `fi` | Frequência absoluta |
 | `fi (acu)` | Frequência absoluta acumulada |
 | `fr` | Frequência relativa, calculada por `fi / respostas válidas` |

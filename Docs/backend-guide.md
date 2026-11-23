@@ -22,6 +22,8 @@ somente perguntas confirmadas e valores tratados do SQLite. As funções puras d
 estatistica/calculos.ts recebem os valores e devolvem medidas, frequências e
 metadados gráficos. Classes quantitativas incluem valor numérico; nas contínuas,
 o ponto médio é calculado no backend para posicionar o gráfico de pontos.
+Nas discretas, a API também calcula classes de Sturges para a tabela de
+frequências e fornece os valores individuais aos gráficos.
 O frontend não recalcula estatísticas nem usa fallback mock.
 
 ## Organização
@@ -68,8 +70,10 @@ dependem de HTTP ou banco. Imports locais usam extensão .ts; não há recursivi
 As sugestões não substituem a revisão: números inteiros sugerem discreta,
 números fracionários sugerem contínua. Escolaridade, frequência e concordância
 possuem ordens sugeridas a partir dos rótulos planejados. Outros textos sugerem
-nominal, com categorias observadas. Uma contagem escrita como texto não é
-corrigida automaticamente. O questionário não está fixado no código.
+nominal, com categorias observadas. Quando o usuário confirma uma pergunta como
+quantitativa, o backend pode extrair um único número de uma resposta com letras
+e conserva o original. Respostas preenchidas sem número ou com vários números
+ficam na revisão. O questionário não está fixado no código.
 
 Limites iniciais: 10 MB, 10.000 respostas e seleção de 1 a 30 perguntas.
 Cabeçalhos vazios são preservados e começam como não selecionados. Linhas

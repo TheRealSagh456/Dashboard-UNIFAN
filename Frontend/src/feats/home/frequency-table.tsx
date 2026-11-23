@@ -17,6 +17,7 @@ const formatadorPercentual = new Intl.NumberFormat("pt-BR", {
 const definicoes = {
   Classe: "Número sequencial da faixa ou categoria.",
   Dados: "Valor, categoria ou intervalo representado pela classe.",
+  "Intervalo de classe": "O símbolo |- inclui o limite inferior. O símbolo |-| inclui os dois limites.",
   fi: "Frequência absoluta: quantidade de respostas na classe.",
   "fi (acu)": "Frequência absoluta acumulada até a classe atual.",
   fr: "Frequência relativa: fi dividida pelo total de respostas válidas.",
@@ -78,7 +79,12 @@ export function TabelaFrequencias({
   pergunta: PerguntaDashboard;
 }) {
   if (pergunta.respostasMultiplas) return <TabelaMultiplas pergunta={pergunta} />;
-  const linhas = pergunta.distribuicao;
+  const comIntervalos = pergunta.categoria === "Contínua" || pergunta.distribuicaoAgrupada !== undefined;
+  const colunas = [
+    ...(comIntervalos ? ["Intervalo de classe", "Classe"] as const : ["Classe", "Dados"] as const),
+    "fi", "fi (acu)", "fr", "fr (acu)", "fr%", "fr% (acu)",
+  ] as const;
+  const linhas = pergunta.distribuicaoAgrupada ?? pergunta.distribuicao;
   const ultimaClasse = linhas.at(-1);
   const total = pergunta.respostasValidas;
 
@@ -108,8 +114,8 @@ export function TabelaFrequencias({
             Tabela de distribuição de frequências da pergunta {pergunta.codigo}
           </caption>
           <colgroup>
-            <col className="w-[8%]" />
-            <col className="w-[24%]" />
+            <col className={comIntervalos ? "w-[24%]" : "w-[8%]"} />
+            <col className={comIntervalos ? "w-[8%]" : "w-[24%]"} />
             <col className="w-[10%]" />
             <col className="w-[12%]" />
             <col className="w-[10%]" />
@@ -119,17 +125,15 @@ export function TabelaFrequencias({
           </colgroup>
           <thead className="bg-surface text-[0.65rem] uppercase tracking-[0.05em] text-muted">
             <tr>
-              {(Object.keys(definicoes) as Array<keyof typeof definicoes>).map(
-                (coluna) => (
-                  <th
-                    key={coluna}
-                    scope="col"
-                    className="border-b border-line px-2 py-3 font-semibold xl:px-3"
-                  >
-                    <CabecalhoTabela nome={coluna} />
-                  </th>
-                ),
-              )}
+              {colunas.map((coluna) => (
+                <th
+                  key={coluna}
+                  scope="col"
+                  className="border-b border-line px-2 py-3 font-semibold xl:px-3"
+                >
+                  <CabecalhoTabela nome={coluna} />
+                </th>
+              ))}
             </tr>
           </thead>
           <tbody>
@@ -138,11 +142,11 @@ export function TabelaFrequencias({
                 key={linha.classe}
                 className="border-b border-line/70 last:border-0 hover:bg-brand-50/55"
               >
-                <th scope="row" className="px-2 py-3 font-semibold xl:px-3">
-                  {linha.classe}
+                <th scope="row" className="break-words px-2 py-3 font-semibold xl:px-3">
+                  {comIntervalos ? linha.dados : linha.classe}
                 </th>
-                <td className="truncate px-2 py-3 xl:px-3" title={linha.dados}>
-                  {linha.dados}
+                <td className="truncate px-2 py-3 xl:px-3" title={comIntervalos ? undefined : linha.dados}>
+                  {comIntervalos ? linha.classe : linha.dados}
                 </td>
                 <td className="px-2 py-3 tabular-nums xl:px-3">
                   {formatadorInteiro.format(linha.fi)}
@@ -192,10 +196,11 @@ export function TabelaFrequencias({
             className="rounded-2xl border border-line bg-paper p-3"
           >
             <div className="mb-3 flex items-center justify-between gap-3">
-              <BadgeClasse classe={linha.classe} />
-              <Text as="strong" variant="label" className="truncate">
+              {!comIntervalos && <BadgeClasse classe={linha.classe} />}
+              <Text as="strong" variant="label" className={comIntervalos ? "min-w-0 break-words" : "truncate"}>
                 {linha.dados}
               </Text>
+              {comIntervalos && <BadgeClasse classe={linha.classe} />}
             </div>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
               <CampoFrequencia

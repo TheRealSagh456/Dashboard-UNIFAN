@@ -114,9 +114,15 @@ possua um fixture dedicado em Mocks/forms.
 - Colunas sem cabeçalho começam como não selecionadas, sem perder seus valores.
 - Datas CSV, inclusive AM/PM e GMT, permanecem como texto. Datas Excel são
   serializadas como calendário ISO sem Z. Não se pressupõe um fuso de coleta.
-- Números aceitam sinal e um separador decimal, sem unidades ou milhares.
-  O decimal CSV é sugerido e pode ser corrigido na revisão. Excel usa os números
-  tipados extraídos da fonte.
+- Na confirmação de uma pergunta quantitativa, uma resposta com letras pode
+  fornecer um único número, como `18 anos` ou `-1,5 horas`. O número tratado
+  respeita o sinal e o separador decimal configurado. A resposta bruta permanece
+  intacta. Respostas preenchidas sem número, com mais de um número ou com valor
+  incompatível com o tipo confirmado ficam sinalizadas na revisão.
+- O decimal CSV é sugerido e pode ser corrigido na revisão. Excel usa ponto
+  como separador decimal e conserva os números tipados extraídos da fonte.
+  Separadores de milhar não são interpretados. Variáveis discretas exigem um
+  inteiro seguro e valores fracionários não são arredondados.
 - Limites iniciais: 10 MB, 10.000 respostas e 1 a 30 perguntas selecionadas.
 - A ausência é null no valor tratado. O texto bruto é conservado, inclusive
   espaços; zero continua válido. Linhas inteiramente vazias são ignoradas.

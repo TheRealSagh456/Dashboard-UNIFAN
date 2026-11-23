@@ -130,6 +130,40 @@ test("classificação pode ser corrigida, preservando IDs e valores originais", 
   assert.equal(codigo.valor_categoria, "00123");
 });
 
+test("perguntas confirmadas como numéricas persistem um único número com unidades e mantêm a resposta original", async () => {
+  const revisao = await importarArquivo(Buffer.from("Idade;Tempo;Etiqueta\n18 anos;-1,5 horas;Tipo 1\n0 anos;2,5 horas;Tipo 2"), "unidades.csv");
+  assert.deepEqual(revisao.colunas.map((coluna) => coluna.tipoVariavel), Array(3).fill("qualitativa_nominal"));
+  const tipos = ["quantitativa_discreta", "quantitativa_continua", "qualitativa_nominal"] as const;
+  await salvarRevisao(revisao.id, {
+    colunas: revisao.colunas.map((coluna, i) => ({ ...coluna, tipoVariavel: tipos[i]! })),
+    separadorDecimal: ",",
+  });
+  await confirmarImportacao(revisao.id);
+  const respostas = await obterBanco()("resposta as r")
+    .join("coluna as c", "c.id", "r.coluna_id")
+    .join("participante as p", "p.id", "r.participante_id")
+    .where("c.importacao_id", revisao.id)
+    .orderBy(["p.indice_linha", "c.posicao_original"])
+    .select("r.valor_bruto", "r.valor_numerico", "r.valor_categoria");
+  assert.deepEqual(respostas.map(({ valor_bruto, valor_numerico, valor_categoria }) =>
+    [valor_bruto, valor_numerico, valor_categoria]), [
+    ["18 anos", 18, null], ["-1,5 horas", -1.5, null], ["Tipo 1", null, "Tipo 1"],
+    ["0 anos", 0, null], ["2,5 horas", 2.5, null], ["Tipo 2", null, "Tipo 2"],
+  ]);
+});
+
+test("respostas numéricas ambíguas ou sem número são sinalizadas na revisão", async () => {
+  const revisao = await importarArquivo(Buffer.from("Tempo\n1 hora e 30 minutos\nNão sei\n1.5 horas"), "ambiguas.csv");
+  await salvarRevisao(revisao.id, {
+    colunas: revisao.colunas.map((coluna) => ({ ...coluna, tipoVariavel: "quantitativa_continua" })),
+    separadorDecimal: ",",
+  });
+  await assert.rejects(confirmarImportacao(revisao.id), { code: "IMPORT_VALUES_INVALID" });
+  const revisada = (await app.inject("/api/importacoes/" + revisao.id)).json().data as RevisaoImportacao;
+  assert.equal(revisada.status, "revisao");
+  assert.deepEqual(revisada.problemas.map((problema) => problema.valorBruto), ["1 hora e 30 minutos", "Não sei", "1.5 horas"]);
+});
+
 test("conversões inválidas ficam na revisão, sem arredondar nem apagar o original", async () => {
   const revisao = await importarArquivo(Buffer.from('Idade\n18.5\n0'), "invalido.csv");
   const colunas = revisao.colunas.map((coluna) => ({ ...coluna, tipoVariavel: "quantitativa_discreta" as const }));
@@ -262,6 +296,7 @@ test("dashboard consulta a pesquisa informada e exportação conserva esse escop
   assert.equal(quantidade!.id, revisao.colunas[1]!.id);
   assert.equal(quantidade!.medidas.media, 1.6);
   assert.equal(quantidade!.distribuicao[0]!.dados, "0");
+  assert.equal(quantidade!.distribuicaoAgrupada?.at(-1)?.fiAcumulada, 5);
   assert.equal(tempo!.medidas.media, 2.5);
   assert.equal(preferencia!.medidas.moda![0], "Ônibus");
   assert.equal(prioridade!.medidas.mediana, "Alta");

@@ -136,6 +136,24 @@ test("card de moda exibe alternativas em lista e permite quebra de palavras long
   assert.ok(simples.includes("whitespace-normal") && simples.includes(texto));
 });
 
+test("a primeira coluna da tabela das perguntas quantitativas mostra o intervalo de classe", async () => {
+  const { TabelaFrequencias } = await import("../src/feats/home/frequency-table.tsx");
+  const intervalo = { classe: 1, dados: "5 |-| 10", fi: 2, fiAcumulada: 2, fr: 1, frAcumulada: 1, frPercentual: 100, frPercentualAcumulada: 100 };
+  const pergunta = { codigo: "Q01", tipo: "Quantitativa", respostasValidas: 2 };
+  const quantitativas = [
+    { ...pergunta, categoria: "Contínua", distribuicao: [intervalo] },
+    { ...pergunta, categoria: "Discreta", distribuicao: [{ ...intervalo, dados: "5" }], distribuicaoAgrupada: [intervalo] },
+  ];
+  for (const quantitativa of quantitativas) {
+    const tabela = render(TabelaFrequencias, { pergunta: quantitativa });
+    const primeiraColuna = tabela.match(/<thead[^>]*><tr><th[^>]*>(.*?)<\/th>/s)?.[1];
+    assert.ok(primeiraColuna?.includes("Intervalo de classe"));
+    assert.match(tabela, /<tbody><tr[^>]*><th[^>]*>5 \|-\| 10<\/th>/);
+  }
+  const qualitativa = render(TabelaFrequencias, { pergunta: { ...pergunta, tipo: "Qualitativa", categoria: "Nominal", distribuicao: [{ ...intervalo, dados: "Sim" }] } });
+  assert.match(qualitativa, /<tbody><tr[^>]*><th[^>]*>1<\/th><td[^>]*>Sim<\/td>/);
+});
+
 test("API mantém as modas separadas e tabela múltipla omite acumulados e pizza", async () => {
   const { carregarDashboard } = await import("../src/services/dashboard.ts");
   const { TabelaFrequencias } = await import("../src/feats/home/frequency-table.tsx");

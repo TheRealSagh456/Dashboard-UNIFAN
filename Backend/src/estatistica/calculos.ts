@@ -13,6 +13,9 @@ const graficos: Record<CategoriaPergunta, TipoGrafico[]> = {
   Ordinal: ["Colunas", "Pontos"],
 };
 const formatador = new Intl.NumberFormat("pt-BR", { maximumSignificantDigits: 10 });
+const formatadorPrecisao = new Intl.NumberFormat("pt-BR", { maximumSignificantDigits: 17 });
+
+type ClasseBase = Pick<ClasseFrequencia, "dados" | "fi" | "valor" | "histograma">;
 
 // Interpolação linear na posição (n - 1) * p, com os dados já ordenados.
 export function quantil(ordenados: number[], proporcao: number): number {
@@ -36,15 +39,25 @@ function modas(frequencias: Map<ValorEstatistico, number>, total: number) {
   return [...frequencias].filter(([, fi]) => fi === maior).map(([valor]) => valor);
 }
 
-function histograma(ordenados: number[]) {
+function classesSturges(ordenados: number[]): ClasseBase[] {
+  if (!ordenados.length) return [];
   const minimo = ordenados[0]!;
   const maximo = ordenados[ordenados.length - 1]!;
-  const quantidade = minimo === maximo ? 1 : Math.ceil(1 + Math.log2(ordenados.length));
-  const inicio = minimo === maximo ? minimo - 0.5 : minimo;
-  const fim = minimo === maximo ? maximo + 0.5 : maximo;
-  const amplitude = (fim - inicio) / quantidade;
+  const constante = minimo === maximo;
+  const quantidadeSugerida = constante ? 1 : Math.ceil(1 + Math.log2(ordenados.length));
+  const meiaAmplitude = Math.max(0.5, Math.abs(minimo) * Number.EPSILON / 2);
+  const inicio = constante ? Math.max(-Number.MAX_VALUE, minimo - meiaAmplitude) : minimo;
+  const fim = constante ? Math.min(Number.MAX_VALUE, maximo + meiaAmplitude) : maximo;
+  const amplitude = (fim - inicio) / quantidadeSugerida;
   if (!Number.isFinite(amplitude) || amplitude <= 0) return [];
-  const limites = Array.from({ length: quantidade + 1 }, (_, i) => i === quantidade ? fim : inicio + i * amplitude);
+  // Limites muito próximos podem coincidir na precisão de um number.
+  const limites = Array.from({ length: quantidadeSugerida + 1 }, (_, i) => i === quantidadeSugerida ? fim : inicio + i * amplitude)
+    .filter((limite, i, todos) => i === 0 || limite > todos[i - 1]!);
+  const quantidade = limites.length - 1;
+  let rotulos = limites.map((limite) => formatador.format(limite));
+  if (new Set(rotulos).size < limites.length) {
+    rotulos = limites.map((limite) => formatadorPrecisao.format(limite));
+  }
   const contagens = Array<number>(quantidade).fill(0);
   for (const valor of ordenados) {
     let indice = 0;
@@ -55,11 +68,21 @@ function histograma(ordenados: number[]) {
     const inferior = limites[i]!;
     const superior = limites[i + 1]!;
     return {
-      dados: `[${formatador.format(inferior)}; ${formatador.format(superior)}${i === quantidade - 1 ? "]" : ")"}`,
+      dados: `${rotulos[i]} ${i === quantidade - 1 ? "|-|" : "|-"} ${rotulos[i + 1]}`,
       valor: inferior + (superior - inferior) / 2,
       fi,
       histograma: { limiteInferior: inferior, limiteSuperior: superior, densidade: fi / (superior - inferior) },
     };
+  });
+}
+
+function acumularFrequencias(classes: ClasseBase[], total: number): ClasseFrequencia[] {
+  let acumulada = 0;
+  return classes.map((classe, i) => {
+    acumulada += classe.fi;
+    const fr = total ? classe.fi / total : 0;
+    const frAcumulada = total ? acumulada / total : 0;
+    return { ...classe, classe: i + 1, fiAcumulada: acumulada, fr, frAcumulada, frPercentual: fr * 100, frPercentualAcumulada: frAcumulada * 100 };
   });
 }
 
@@ -92,9 +115,9 @@ export function analisarValores(tipo: TipoVariavel, respostas: Array<ValorEstati
     }
   }
 
-  let classes: Array<{ dados: string; fi: number; valor?: number; histograma?: NonNullable<ClasseFrequencia["histograma"]> }>;
-  if (tipo === "quantitativa_continua" && valores.length) {
-    classes = histograma(ordenados);
+  let classes: ClasseBase[];
+  if (tipo === "quantitativa_continua") {
+    classes = classesSturges(ordenados);
   } else if (tipo === "qualitativa_ordinal") {
     classes = ordem.map((rotulo) => ({ dados: rotulo, fi: frequencias.get(rotulo) ?? 0 }));
   } else {
@@ -103,20 +126,17 @@ export function analisarValores(tipo: TipoVariavel, respostas: Array<ValorEstati
       ...(typeof valor === "number" ? { valor } : {}),
     }));
   }
-  let acumulada = 0;
-  const distribuicao = classes.map((classe, i) => {
-    acumulada += classe.fi;
-    const fr = valores.length ? classe.fi / valores.length : 0;
-    const frAcumulada = valores.length ? acumulada / valores.length : 0;
-    return { ...classe, classe: i + 1, fiAcumulada: acumulada, fr, frAcumulada, frPercentual: fr * 100, frPercentualAcumulada: frAcumulada * 100 };
-  });
+  const distribuicao = acumularFrequencias(classes, valores.length);
+  const distribuicaoAgrupada = tipo === "quantitativa_discreta"
+    ? acumularFrequencias(classesSturges(ordenados), valores.length)
+    : undefined;
   return {
     tipo: numerica ? "Quantitativa" as const : "Qualitativa" as const, categoria,
     totalRespostas: respostas.length, respostasValidas: valores.length,
     respostasMultiplas: false, totalMarcacoes: valores.length,
     respostasAusentes: respostas.length - valores.length,
     percentualAusentes: respostas.length ? ((respostas.length - valores.length) / respostas.length) * 100 : 0,
-    medidas, distribuicao, graficos: [...graficos[categoria]],
+    medidas, distribuicao, ...(distribuicaoAgrupada && { distribuicaoAgrupada }), graficos: [...graficos[categoria]],
     graficoRecomendado: graficos[categoria][0]!, ...(boxplot ? { boxplot } : {}),
   };
 }

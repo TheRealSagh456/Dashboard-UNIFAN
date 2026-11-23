@@ -115,7 +115,11 @@ Ausências viram null nos campos tratados; zero permanece válido. Textos
 categóricos de resposta única recebem somente trim; Sim/Não não viram booleanos.
 Em respostas múltiplas, cada alternativa recebe trim e repetições da mesma célula
 são removidas no valor tratado, conservando valorBruto.
-Números não aceitam unidades nem separadores de milhar e não são arredondados.
+Nas perguntas quantitativas, textos com letras podem fornecer um único número
+com sinal e separador decimal configurado, mantendo `valorBruto` intacto.
+Respostas preenchidas sem número ou com mais de um número geram problema de
+conversão. O separador configurado é interpretado exclusivamente como decimal.
+Perguntas discretas exigem um inteiro seguro.
 Categorias nominais são livres; categorias ordinais devem pertencer à lista
 confirmada. Metadados mantêm seu valor bruto, sem conversão de data ou fuso.
 
@@ -211,6 +215,12 @@ Cada pergunta contém:
   moda é um array com todos os valores modais, vazio quando amodal;
 - `distribuicao`: `classe`, `dados`, `fi`, `fiAcumulada`, `fr`,
   `frAcumulada`, `frPercentual`, `frPercentualAcumulada`;
+- `distribuicaoAgrupada`: campo das perguntas discretas com as classes de
+  Sturges para a tabela, no mesmo formato das classes contínuas. Vem vazio
+  quando não há respostas válidas. Os gráficos discretos usam `distribuicao`
+  por valor. As contínuas já recebem os intervalos de Sturges em `distribuicao`.
+- nas classes de Sturges, `dados` usa `5 |- 10` para incluir o limite inferior
+  e `26 |-| 30` para incluir os dois limites da última classe.
 - classes quantitativas incluem `valor`, usado como coordenada dos pontos:
   o próprio número nas discretas e o ponto médio calculado no backend nas contínuas;
 - classes contínuas também contêm `histograma` com `limiteInferior`,

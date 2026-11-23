@@ -325,10 +325,10 @@ realizada e suas consequências.
   alimenta visão geral, catálogo, análise individual e relatório. /home resolve
   a pesquisa atual. Nenhuma falha da API é substituída por dados demonstrativos.
 - **Convenções:** quartis e mediana numéricos usam interpolação linear na posição
-  (n - 1) × p. Histogramas usam ceil(1 + log2(n)) classes de mesma amplitude, sem
-  arredondar os limites de cálculo, incluindo a fronteira inferior e excluindo
-  a superior, salvo o máximo na última classe. Amostra constante usa uma classe
-  de amplitude 1. Moda inclui empates; todos distintos com n > 1 são amodais.
+  (n - 1) × p. Histogramas e tabelas quantitativas usam Sturges, com contagem
+  sugerida de ceil(1 + log2(n)). As classes incluem o limite inferior e excluem
+  o superior, salvo o máximo na última classe. Amostras constantes usam uma
+  única classe. Moda inclui empates; todos distintos com n > 1 são amodais.
   Mediana ordinal par informa as duas categorias centrais quando diferentes.
   Boxplot usa mínimo e máximo observados, sem exclusão de outliers.
 - **Consequências:** ausências ficam fora das medidas e dos denominadores por
@@ -393,6 +393,6 @@ realizada e suas consequências.
 
 | Tema                | Definição necessária                                                                         | Impacto principal                    |
 | :------------------ | :------------------------------------------------------------------------------------------- | :----------------------------------- |
-| Rótulo das classes  | Confirmar com o professor se a primeira coluna da distribuição será `Classe` ou `xi`.        | Interface e documentação estatística |
+| Rótulo das classes  | Confirmar com o professor se a coluna do índice sequencial será `Classe` ou `xi`.             | Interface e documentação estatística |
 | Acumulados nominais | Confirmar se as frequências acumuladas devem permanecer nas perguntas qualitativas nominais. | Tabela de distribuição               |
 | Limites de arquivo  | Reavaliar os limites iniciais de 10 MB e 10.000 respostas quando houver uso real.               | Validação e desempenho               |

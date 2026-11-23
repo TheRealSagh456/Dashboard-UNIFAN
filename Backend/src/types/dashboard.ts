@@ -44,6 +44,7 @@ export type AnalisePergunta = {
   totalMarcacoes: number;
   medidas: Medidas;
   distribuicao: ClasseFrequencia[];
+  distribuicaoAgrupada?: ClasseFrequencia[];
   graficos: TipoGrafico[];
   graficoRecomendado: TipoGrafico;
   boxplot?: ResumoBoxplot;

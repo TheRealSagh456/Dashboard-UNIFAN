@@ -49,9 +49,22 @@ test("Sturges produz classes contíguas, inclui o máximo e usa densidade absolu
     { limiteInferior: 4, limiteSuperior: 6, densidade: 1 },
     { limiteInferior: 6, limiteSuperior: 8, densidade: 1 },
   ]);
-  assert.equal(analise.distribuicao[0]!.dados, "[0; 2)");
-  assert.equal(analise.distribuicao.at(-1)!.dados, "[6; 8]");
+  assert.equal(analise.distribuicao[0]!.dados, "0 |- 2");
+  assert.equal(analise.distribuicao.at(-1)!.dados, "6 |-| 8");
   assert.equal(analise.distribuicao.reduce((area, c) => area + c.histograma!.densidade * (c.histograma!.limiteSuperior - c.histograma!.limiteInferior), 0), 8);
+});
+
+test("discretas agrupam por Sturges na tabela e mantêm a distribuição por valor para gráficos", () => {
+  const analise = analisarValores("quantitativa_discreta", [5, 5, 10, 10, 15, 15, 20, 25, null]);
+  assert.deepEqual(analise.distribuicao.map((classe) => classe.valor), [5, 10, 15, 20, 25]);
+  assert.deepEqual(analise.distribuicaoAgrupada?.map(({ dados, fi, fiAcumulada, frPercentualAcumulada }) =>
+    [dados, fi, fiAcumulada, frPercentualAcumulada]), [
+    ["5 |- 10", 2, 2, 25],
+    ["10 |- 15", 2, 4, 50],
+    ["15 |- 20", 2, 6, 75],
+    ["20 |-| 25", 2, 8, 100],
+  ]);
+  assert.deepEqual(analisarValores("quantitativa_discreta", [null]).distribuicaoAgrupada, []);
 });
 
 test("amostra constante usa uma classe de amplitude um e boxplot constante", () => {
@@ -67,7 +80,7 @@ test("classes com valores pequenos mantêm rótulos distintos e pontos médios n
   for (const classe of analise.distribuicao) {
     assert.ok(classe.valor! >= classe.histograma!.limiteInferior);
     assert.ok(classe.valor! <= classe.histograma!.limiteSuperior);
-    assert.ok(!classe.dados.includes("[0; 0"));
+    assert.ok(!classe.dados.startsWith("0 |-"));
   }
 });
 

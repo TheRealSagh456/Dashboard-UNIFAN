@@ -46,6 +46,7 @@ export type PerguntaDashboard = {
   respostasMultiplas?: boolean;
   totalMarcacoes?: number;
   distribuicao: ClasseFrequencia[];
+  distribuicaoAgrupada?: ClasseFrequencia[];
   medidas: MedidasPergunta;
   graficos: TipoGrafico[];
   graficoRecomendado: TipoGrafico;

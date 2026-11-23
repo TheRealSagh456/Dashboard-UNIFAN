@@ -20,6 +20,13 @@ export function converterNumero(valor: string, decimal: "," | "."): number | nul
   return Number.isFinite(numero) ? numero : null;
 }
 
+function extrairNumeroDeTexto(texto: string, decimal: "," | "."): number | null {
+  if (!/\p{L}/u.test(texto)) return null;
+  // Mantenha os separadores no trecho para validar o número no dialeto escolhido.
+  const numeros = texto.match(/[+-]?[.,]?\d+(?:[.,]\d+)*/g);
+  return numeros?.length === 1 ? converterNumero(numeros[0]!, decimal) : null;
+}
+
 export function normalizarResposta(
   bruto: string | null,
   tipo: TipoVariavel,
@@ -31,7 +38,7 @@ export function normalizarResposta(
   if (estaVazia(bruto)) return { ...vazio, problema: null };
   const texto = bruto!.trim();
   if (tipo.startsWith("quantitativa")) {
-    const numero = converterNumero(texto, decimal);
+    const numero = converterNumero(texto, decimal) ?? extrairNumeroDeTexto(texto, decimal);
     if (numero === null || (tipo === "quantitativa_discreta" && !Number.isSafeInteger(numero))) {
       return { ...vazio, problema: "Resposta numérica incompatível com o tipo confirmado." };
     }
