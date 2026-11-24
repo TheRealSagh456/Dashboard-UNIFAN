@@ -5,6 +5,7 @@
 O backend usa Node 24+, TypeScript executado diretamente, Fastify, Knex e
 SQLite com better-sqlite3. CSV usa csv-parse; XLSX e XLS usam SheetJS.
 O plugin @fastify/multipart recebe os uploads.
+A interface de importação oferece somente upload local de CSV, XLS ou XLSX.
 
 Estão implementados:
 
@@ -154,6 +155,5 @@ estão em `Backend/src/frontend.test.ts`.
 
 - Avaliar o CSV definitivo para ajustar as sugestões quando necessário,
   preservando a revisão explícita dos tipos e das ordens.
-- A busca por link do Google Sheets continua pendente; uploads locais funcionam.
 
 Os contratos e exemplos de payload estão em [api.md](./api.md).

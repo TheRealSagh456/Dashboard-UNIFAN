@@ -228,10 +228,9 @@ etapa final informa o armazenamento concluído. Erros permanecem visíveis e
 problemas de conversão exibem o registro e o valor original.
 A importação usa o tempo real da API, sem o atraso demonstrativo de 2 segundos.
 
-O campo do Google Sheets mantém o link em estado controlado e possui um botão
-`Buscar`. O envio do formulário apenas evita a navegação do navegador; a futura
-chamada de validação deverá ser conectada nesse manipulador quando o endpoint
-estiver disponível.
+A tela oferece somente upload local de CSV, XLS ou XLSX. O texto de orientação
+descreve esses formatos; não há campo de link, botão de busca de planilha nem
+separador entre métodos de importação.
 
 ## Dashboard de perguntas
 

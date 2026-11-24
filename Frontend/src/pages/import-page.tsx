@@ -5,7 +5,6 @@ import {
   LucideCloudUpload,
   LucideFileSpreadsheet,
   LucideFileText,
-  LucideLink,
   LucideUpload,
 } from "lucide-react";
 import {
@@ -14,7 +13,6 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type FormEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -25,7 +23,6 @@ import {
   QuestionsGrid,
   Stepper,
   Text,
-  TextField,
 } from "../components";
 import type {
   CategoriaVariavel,
@@ -73,7 +70,6 @@ export function ImportPage() {
   );
   const [erroArquivo, setErroArquivo] = useState<string | null>(null);
   const [arrastandoArquivo, setArrastandoArquivo] = useState(false);
-  const [linkPlanilha, setLinkPlanilha] = useState("");
   const [processandoImportacao, setProcessandoImportacao] = useState(false);
   const inputArquivoRef = useRef<HTMLInputElement>(null);
   const contadorArrasteRef = useRef(0);
@@ -175,11 +171,6 @@ export function ImportPage() {
     contadorArrasteRef.current = 0;
     setArrastandoArquivo(false);
     selecionarArquivo(event.dataTransfer.files[0]);
-  }
-
-  function buscarPlanilha(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!linkPlanilha.trim()) return;
   }
 
   async function avancarEtapa() {
@@ -314,8 +305,7 @@ export function ImportPage() {
                   tone="muted"
                   className="mx-auto mt-2 max-w-xl"
                 >
-                  Importe as respostas em CSV ou Excel, ou informe um link do
-                  Google Sheets.
+                  Importe as respostas em CSV ou Excel.
                 </Text>
               </div>
 
@@ -403,43 +393,6 @@ export function ImportPage() {
                   {erroArquivo}
                 </Text>
               )}
-
-              <div className="flex items-center gap-3" aria-hidden>
-                <span className="h-px flex-1 bg-line" />
-                <Text as="span" variant="eyebrow" tone="muted">
-                  ou
-                </Text>
-                <span className="h-px flex-1 bg-line" />
-              </div>
-
-              <form className="grid gap-2" onSubmit={buscarPlanilha}>
-                <label
-                  htmlFor="link-google-sheets"
-                  className="text-sm font-semibold leading-5 text-ink"
-                >
-                  Link do Google Sheets
-                </label>
-                <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2">
-                  <TextField
-                    id="link-google-sheets"
-                    placeholder="https://docs.google.com/spreadsheets/d/..."
-                    value={linkPlanilha}
-                    onChange={(event) => setLinkPlanilha(event.target.value)}
-                    className="h-13 text-base"
-                    leadingIcon={<LucideLink className="size-5" />}
-                  />
-                  <Button
-                    type="submit"
-                    className="h-13 px-5"
-                    disabled={!linkPlanilha.trim()}
-                  >
-                    Buscar
-                  </Button>
-                </div>
-                <Text variant="caption" tone="muted">
-                  A verificação do link será conectada em uma próxima etapa.
-                </Text>
-              </form>
             </Card>
           )}
 
